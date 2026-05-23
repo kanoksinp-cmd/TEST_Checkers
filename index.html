@@ -318,10 +318,8 @@
         <div id="combo-timer-display">⚡ ต้องกินต่อ! เวลาที่เหลือ: 5.0 วินาที</div>
     </div>
 
-    <!-- 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบใต้กระดาน -->
     <button id="login-shortcut-btn" onclick="openLoginPanel()">👤 จัดการโปรไฟล์ / เข้าสู่ระบบ</button>
 
-    <!-- 🏆 หน้าต่างจบเกม -->
     <div id="game-over-modal">
         <div class="modal-content">
             <h1>🎉 จบการแข่งขัน 🎉</h1>
@@ -386,7 +384,6 @@
                 <option value="online">🌐 ประลองออนไลน์ข้ามเครื่อง (Multiplayer)</option>
             </select>
 
-            <!-- 🤖 ส่วนเลือกความยากของ Bot AI -->
             <div id="ai-difficulty-container" style="margin-top: 12px;">
                 <label>ระดับความยากของบอท AI:</label>
                 <select id="ai-difficulty-select" onchange="changeAiDifficulty(this.value)">
@@ -501,6 +498,7 @@
             }
         }
 
+        // 👑 ฟังก์ชันสร้างโมเดลหมาก (อัปเดต: เพิ่มส่วนประกอบโครงสร้างมงกุฎครอบสำหรับตัวหมากที่เป็นคิง)
         function drawPieces() {
             piece3DObjects.forEach(p => scene.remove(p));
             piece3DObjects = [];
@@ -517,16 +515,56 @@
                         const mat = new THREE.MeshStandardMaterial(matConfig);
 
                         if (!isKing) {
+                            // หมากเบี้ยธรรมดาทั่วไป
                             const geo = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
                             pieceMesh = new THREE.Mesh(geo, mat);
                             pieceMesh.position.set(c - 3.5, 0.125, r - 3.5);
                         } else {
+                            // คิงฮอส (หมากหงายคู่ + สวมมงกุฎสัญลักษณ์ขุนด้านบน)
                             const group = new THREE.Group();
+                            
+                            // 1. ฐานหมากชั้นที่ 1 (ล่างสุด)
                             const geo1 = new THREE.CylinderGeometry(0.35, 0.35, 0.12, 32);
-                            const m1 = new THREE.Mesh(geo1, mat); m1.position.y = 0.08; group.add(m1);
+                            const m1 = new THREE.Mesh(geo1, mat); m1.position.y = 0.06; group.add(m1);
+                            
+                            // 2. ฐานหมากชั้นที่ 2 (ซ้อนกลาง)
                             const geo2 = new THREE.CylinderGeometry(0.32, 0.32, 0.12, 32);
-                            const m2 = new THREE.Mesh(geo2, mat); m2.position.y = 0.20; group.add(m2);
-                            pieceMesh = group; pieceMesh.position.set(c - 3.5, 0, r - 3.5);
+                            const m2 = new THREE.Mesh(geo2, mat); m2.position.y = 0.18; group.add(m2);
+                            
+                            // 3. 👑 มงกุฎขุน (Crown Geometry)
+                            // 3.1 วงแหวนรองมงกุฎ
+                            const crownBaseGeo = new THREE.CylinderGeometry(0.22, 0.24, 0.05, 16);
+                            const crownBase = new THREE.Mesh(crownBaseGeo, mat);
+                            crownBase.position.y = 0.265;
+                            group.add(crownBase);
+
+                            // 3.2 ยอดหนามมงกุฎทรงกรวยแหลม (ขยาย 4 ทิศรอบวงแหวน)
+                            const spikeGeo = new THREE.ConeGeometry(0.06, 0.18, 4);
+                            const spikeOffsets = [
+                                {x: 0.13, z: 0}, {x: -0.13, z: 0},
+                                {x: 0, z: 0.13}, {x: 0, z: -0.13}
+                            ];
+                            spikeOffsets.forEach(offset => {
+                                const spike = new THREE.Mesh(spikeGeo, mat);
+                                spike.position.set(offset.x, 0.35, offset.z);
+                                group.add(spike);
+                            });
+
+                            // 3.3 อัญมณีทรงกลมยอดมงกุฎตรงกลาง
+                            const gemGeo = new THREE.SphereGeometry(0.05, 8, 8);
+                            // ใส่สีเหลือบทอง/ฟ้าเพิ่มมิติให้มงกุฎดูเด่นตา
+                            const gemMat = new THREE.MeshStandardMaterial({
+                                color: isRed ? 0xf1c40f : 0x00a8ff,
+                                roughness: 0.2,
+                                metalness: 0.9,
+                                emissive: isRed ? 0x5c4300 : 0x003b5c
+                            });
+                            const gem = new THREE.Mesh(gemGeo, gemMat);
+                            gem.position.y = 0.38;
+                            group.add(gem);
+
+                            pieceMesh = group; 
+                            pieceMesh.position.set(c - 3.5, 0, r - 3.5);
                         }
                         scene.add(pieceMesh); piece3DObjects.push(pieceMesh);
                     }
@@ -637,7 +675,6 @@
 
         function restartFromModal() { if (gameMode === 'online') { socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') }); } resetGame(); }
 
-        // 🔒 ฟังก์ชันเช็กกฎการเดิน (อัปเดต: บล็อกห้ามเดินถอยหลังถ้าไม่ใช่คิงฮอส)
         function checkMove(startRow, startCol, endRow, endCol) {
             const pType = boardState[startRow][startCol];
             if (boardState[endRow][endCol] !== 0) return { valid: false };
@@ -646,11 +683,9 @@
 
             if (absR !== absC) return { valid: false };
 
-            // หมากธรรมดา (1 = แดงธรรมดา, 2 = ขาวธรรมดา)
             if (pType === 1 || pType === 2) {
-                // 🛑 เงื่อนไขห้ามหมากธรรมดาเดินถอยหลัง
-                if (pType === 1 && rDiff > 0) return { valid: false }; // ฝ่ายแดงอยู่ล่าง ต้องเดินขึ้นบนเท่านั้น (rDiff ต้องติดลบ)
-                if (pType === 2 && rDiff < 0) return { valid: false }; // ฝ่ายขาวอยู่บน ต้องเดินลงล่างเท่านั้น (rDiff ต้องเป็นบวก)
+                if (pType === 1 && rDiff > 0) return { valid: false }; 
+                if (pType === 2 && rDiff < 0) return { valid: false }; 
 
                 if (absR === 1) {
                     if ((pType === 1 && rDiff === -1) || (pType === 2 && rDiff === 1)) return { valid: true, type: 'normal' };
@@ -662,7 +697,6 @@
                 }
             }
             
-            // คิงฮอส (3 = คิงแดง, 4 = คิงขาว) -> เดินและกินถอยหลังยาวๆ ได้อิสระ
             if (pType === 3 || pType === 4) {
                 const stepR = rDiff / absR; const stepC = cDiff / absC; let piecesInWay = [];
                 for (let i = 1; i < absR; i++) {
