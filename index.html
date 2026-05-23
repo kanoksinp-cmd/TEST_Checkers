@@ -289,7 +289,7 @@
 
     <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
 
-    <!-- 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบ (เพิ่มเข้ามาใหม่ใต้กระดาน) -->
+    <!-- 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบใต้กระดาน -->
     <button id="login-shortcut-btn" onclick="openLoginPanel()">👤 จัดการโปรไฟล์ / เข้าสู่ระบบ</button>
 
     <!-- 🏆 หน้าต่างจบเกม -->
@@ -327,6 +327,16 @@
                 <option value="local">👥 เล่นสองคนบนเครื่องเดียวกัน (Local)</option>
                 <option value="online">🌐 ประลองออนไลน์ข้ามเครื่อง (Multiplayer)</option>
             </select>
+
+            <!-- 🤖 ส่วนเลือกความยากของ Bot AI (เพิ่มใหม่) -->
+            <div id="ai-difficulty-container" style="margin-top: 12px;">
+                <label>ระดับความยากของบอท AI:</label>
+                <select id="ai-difficulty-select" onchange="changeAiDifficulty(this.value)">
+                    <option value="easy">🟢 ง่าย (เดินสุ่มทั่วไป)</option>
+                    <option value="medium" selected>🟡 ปานกลาง (เน้นเดินกินหมากคุณ)</option>
+                    <option value="hard">🔴 ยาก (คิดลอจิกเป็นขุน / กินได้เปรียบ)</option>
+                </select>
+            </div>
         </div>
 
         <div class="section" id="friend-select-section">
@@ -392,6 +402,7 @@
         ];
 
         let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
+        let aiDifficulty = 'medium'; // ตัวแปรตั้งค่าความยากตั้งต้น
         let selectedFriend = ''; let myRole = ''; 
 
         let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
@@ -516,19 +527,31 @@
         function changeGameMode(mode) {
             gameMode = mode;
             const friendSection = document.getElementById('friend-select-section');
+            const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
             const titleEl = document.getElementById('h2h-title');
             
             if (mode === 'online') {
-                friendSection.style.display = 'block'; renderOnlineFriends();
+                friendSection.style.display = 'block';
+                aiDifficultyContainer.style.display = 'none'; // ซ่อนความยากบอทในโหมดออนไลน์
+                renderOnlineFriends();
                 titleEl.innerText = "แดง (คุณ) VS ขาว (เลือกคู่แข่ง...)";
             } else if (mode === 'local') {
-                friendSection.style.display = 'none'; myRole = 'local';
+                friendSection.style.display = 'none';
+                aiDifficultyContainer.style.display = 'none'; // ซ่อนความยากบอทในโหมดเล่นด้วยกัน
+                myRole = 'local';
                 titleEl.innerText = "แดง (ผู้เล่น 1) VS ขาว (ผู้เล่น 2)";
             } else {
-                friendSection.style.display = 'none'; myRole = 'red';
+                friendSection.style.display = 'none';
+                aiDifficultyContainer.style.display = 'block'; // แสดงความยากบอท
+                myRole = 'red';
                 titleEl.innerText = "แดง (คุณ) VS ขาว (บอท AI)";
             }
             resetGame();
+        }
+
+        /* 🤖 ฟังก์ชันอัปเดตระดับความยากของ AI */
+        function changeAiDifficulty(diff) {
+            aiDifficulty = diff;
         }
 
         function selectOnlineFriend(friendName) {
@@ -544,7 +567,6 @@
             document.getElementById('panel-toggle-trigger').innerText = panel.classList.contains('collapsed') ? '▶' : '◀';
         }
 
-        /* 👤 ฟังก์ชันใหม่: เปิดแถบควบคุมและโฟกัสที่กล่อง Login ทันที */
         function openLoginPanel() {
             const panel = document.getElementById('control-panel');
             if (panel.classList.contains('collapsed')) {
@@ -651,23 +673,58 @@
             currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
             updateUI(false); drawPieces();
 
+            /* 🤖 ประมวลผลลอจิกการคิดของ Bot AI ตามความยาก */
             if (currentTurn === 2 && gameMode === 'bot') {
                 setTimeout(() => {
                     let availableMoves = [];
+                    let jumpMoves = []; // แยกเก็บตาเดินที่เป็นตากินหมากโดยเฉพาะ
+
                     for (let r=0; r<8; r++) {
                         for (let c=0; c<8; c++) {
                             if (boardState[r][c] === 2 || boardState[r][c] === 4) {
                                 for (let tr=0; tr<8; tr++) {
                                     for (let tc=0; tc<8; tc++) {
-                                        let res = checkMove(r, c, tr, tc); if (res.valid) availableMoves.push({ sR: r, sC: c, eR: tr, eC: tc, res: res });
+                                        let res = checkMove(r, c, tr, tc); 
+                                        if (res.valid) {
+                                            let moveData = { sR: r, sC: c, eR: tr, eC: tc, res: res, isKing: boardState[r][c] === 4 };
+                                            availableMoves.push(moveData);
+                                            if (res.type === 'jump') jumpMoves.push(moveData);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+
                     if (availableMoves.length > 0) {
-                        let m = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-                        executeMove(m.sR, m.sC, m.eR, m.eC, m.res, true);
+                        let selectedMove = null;
+
+                        if (aiDifficulty === 'easy') {
+                            // 🟢 ง่าย: สุ่มจากตาเดินทั้งหมดที่มี
+                            selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                        } 
+                        else if (aiDifficulty === 'medium') {
+                            // 🟡 ปานกลาง: ถ้ามีตากินต้องกินก่อน ถ้าไม่มีค่อยสุ่มเดินปกติ
+                            if (jumpMoves.length > 0) {
+                                selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)];
+                            } else {
+                                selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                            }
+                        } 
+                        else if (aiDifficulty === 'hard') {
+                            // 🔴 ยาก: เน้นกินก่อน ถ้าไม่มีตากินจะเลือกเดินตัวที่เป็นขุน หรือเดินหมากธรรมดาเพื่อมุ่งหน้าไปเป็นขุน (แถว r=7)
+                            if (jumpMoves.length > 0) {
+                                selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)];
+                            } else {
+                                // พยายามกรองหาตาเดินที่ทำให้หมากมุ่งไปข้างหน้ามากที่สุด (เข้าใกล้แถวที่ 7 เพื่อเปลี่ยนเป็นขุน)
+                                let bestMoves = availableMoves.sort((a, b) => b.eR - a.eR);
+                                selectedMove = bestMoves[0]; // เลือกตาเดินที่ได้ระยะก้าวหน้าสูงสุด
+                            }
+                        }
+
+                        if (selectedMove) {
+                            executeMove(selectedMove.sR, selectedMove.sC, selectedMove.eR, selectedMove.eC, selectedMove.res, true);
+                        }
                     }
                 }, 800);
             }
@@ -680,7 +737,7 @@
                 if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'white') return;
             }
             if (event.clientX < 360 && !document.getElementById('control-panel').classList.contains('collapsed')) return;
-            if (event.clientY > window.innerHeight - 80 && event.clientX > window.innerWidth/2 - 120 && event.clientX < window.innerWidth/2 + 120) return; // ไม่ให้คลิกโดนกระดานด้านหลังปุ่มทางลัด
+            if (event.clientY > window.innerHeight - 80 && event.clientX > window.innerWidth/2 - 120 && event.clientX < window.innerWidth/2 + 120) return; 
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
