@@ -56,7 +56,6 @@
             border: 2px solid #b2bec3;
         }
 
-        /* ⏳ แถบเวลานับถอยหลังตอนกินต่อเนื่อง */
         #combo-timer-display {
             display: none;
             background: rgba(255, 71, 87, 0.9);
@@ -75,7 +74,6 @@
             100% { opacity: 0.8; }
         }
 
-        /* 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบใต้กระดาน */
         #login-shortcut-btn {
             position: absolute;
             bottom: 30px;
@@ -205,6 +203,13 @@
             border-color: #00ffcc;
         }
 
+        select:disabled {
+            background: #1e2530;
+            color: #7f8c8d;
+            border-color: rgba(255,255,255,0.05);
+            cursor: not-allowed;
+        }
+
         button {
             width: 100%;
             padding: 12px;
@@ -248,7 +253,6 @@
             display: none;
         }
 
-        /* 🏆 Pop-up แจ้งผู้ชนะ */
         #game-over-modal {
             display: none;
             position: fixed;
@@ -350,7 +354,7 @@
             <h3>🎨 ปรับแต่งสีและสกินหมาก</h3>
             <div style="margin-top:10px; display:flex; gap:10px; flex-direction:column;">
                 <div>
-                    <label>🔴 เลือกฝั่งสีหมากของคุณ:</label>
+                    <label>🔴 ฝั่งสีหมากประจำตัวคุณ:</label>
                     <select id="user-color-select" onchange="changePlayerColor(this.value)">
                         <option value="red" selected>ฝ่ายสีแดง (เริ่มเดินก่อน)</option>
                         <option value="white">ฝ่ายสีขาว (เดินทีหลัง)</option>
@@ -424,24 +428,16 @@
         scene.add(dirLight);
 
         let boardState = [
-            [0, 2, 0, 2, 0, 2, 0, 2],
-            [2, 0, 2, 0, 2, 0, 2, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 1, 0, 1, 0, 1],
-            [1, 0, 1, 0, 1, 0, 1, 0]
+            [0, 2, 0, 2, 0, 2, 0, 2], [2, 0, 2, 0, 2, 0, 2, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
         ];
 
         let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
         let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = 'red'; 
 
-        let jumpCount = 0; 
-        let comboPiece = null; 
-        let comboTimer = null;
-        let comboTimeLeft = 5.0;
-
+        let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
         let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
 
         const socket = io({ transports: ['websocket'], upgrade: false }); 
@@ -498,7 +494,6 @@
             }
         }
 
-        // 👑 ฟังก์ชันสร้างโมเดลหมาก (อัปเดต: เพิ่มส่วนประกอบโครงสร้างมงกุฎครอบสำหรับตัวหมากที่เป็นคิง)
         function drawPieces() {
             piece3DObjects.forEach(p => scene.remove(p));
             piece3DObjects = [];
@@ -515,49 +510,33 @@
                         const mat = new THREE.MeshStandardMaterial(matConfig);
 
                         if (!isKing) {
-                            // หมากเบี้ยธรรมดาทั่วไป
                             const geo = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
                             pieceMesh = new THREE.Mesh(geo, mat);
                             pieceMesh.position.set(c - 3.5, 0.125, r - 3.5);
                         } else {
-                            // คิงฮอส (หมากหงายคู่ + สวมมงกุฎสัญลักษณ์ขุนด้านบน)
                             const group = new THREE.Group();
-                            
-                            // 1. ฐานหมากชั้นที่ 1 (ล่างสุด)
                             const geo1 = new THREE.CylinderGeometry(0.35, 0.35, 0.12, 32);
                             const m1 = new THREE.Mesh(geo1, mat); m1.position.y = 0.06; group.add(m1);
                             
-                            // 2. ฐานหมากชั้นที่ 2 (ซ้อนกลาง)
                             const geo2 = new THREE.CylinderGeometry(0.32, 0.32, 0.12, 32);
                             const m2 = new THREE.Mesh(geo2, mat); m2.position.y = 0.18; group.add(m2);
                             
-                            // 3. 👑 มงกุฎขุน (Crown Geometry)
-                            // 3.1 วงแหวนรองมงกุฎ
                             const crownBaseGeo = new THREE.CylinderGeometry(0.22, 0.24, 0.05, 16);
                             const crownBase = new THREE.Mesh(crownBaseGeo, mat);
                             crownBase.position.y = 0.265;
                             group.add(crownBase);
 
-                            // 3.2 ยอดหนามมงกุฎทรงกรวยแหลม (ขยาย 4 ทิศรอบวงแหวน)
                             const spikeGeo = new THREE.ConeGeometry(0.06, 0.18, 4);
-                            const spikeOffsets = [
-                                {x: 0.13, z: 0}, {x: -0.13, z: 0},
-                                {x: 0, z: 0.13}, {x: 0, z: -0.13}
-                            ];
+                            const spikeOffsets = [{x: 0.13, z: 0}, {x: -0.13, z: 0}, {x: 0, z: 0.13}, {x: 0, z: -0.13}];
                             spikeOffsets.forEach(offset => {
                                 const spike = new THREE.Mesh(spikeGeo, mat);
                                 spike.position.set(offset.x, 0.35, offset.z);
                                 group.add(spike);
                             });
 
-                            // 3.3 อัญมณีทรงกลมยอดมงกุฎตรงกลาง
                             const gemGeo = new THREE.SphereGeometry(0.05, 8, 8);
-                            // ใส่สีเหลือบทอง/ฟ้าเพิ่มมิติให้มงกุฎดูเด่นตา
                             const gemMat = new THREE.MeshStandardMaterial({
-                                color: isRed ? 0xf1c40f : 0x00a8ff,
-                                roughness: 0.2,
-                                metalness: 0.9,
-                                emissive: isRed ? 0x5c4300 : 0x003b5c
+                                color: isRed ? 0xf1c40f : 0x00a8ff, roughness: 0.2, metalness: 0.9, emissive: isRed ? 0x5c4300 : 0x003b5c
                             });
                             const gem = new THREE.Mesh(gemGeo, gemMat);
                             gem.position.y = 0.38;
@@ -584,11 +563,7 @@
         function changePieceSkin(skinName) { currentPieceSkin = skinName; drawPieces(); }
 
         function changePlayerColor(color) {
-            if (gameMode === 'online') {
-                alert("⚠️ ในโหมดออนไลน์ สีของคุณจะถูกกำหนดโดยระบบตามคิวผู้ท้าชิงครับ!");
-                document.getElementById('user-color-select').value = myRole;
-                return;
-            }
+            if (gameMode === 'online') return;
             myRole = color;
             updateTitleText();
             resetGame();
@@ -631,12 +606,19 @@
             const colorSelectElement = document.getElementById('user-color-select');
             
             if (mode === 'online') {
-                friendSection.style.display = 'block'; aiDifficultyContainer.style.display = 'none'; renderOnlineFriends();
-                myRole = 'red';
+                friendSection.style.display = 'block'; 
+                aiDifficultyContainer.style.display = 'none'; 
+                colorSelectElement.disabled = true; // 🔒 ล็อกไม่ให้กดเลือกสีเองในโหมดออนไลน์
+                renderOnlineFriends();
             } else if (mode === 'local') {
-                friendSection.style.display = 'none'; aiDifficultyContainer.style.display = 'none'; myRole = 'local';
+                friendSection.style.display = 'none'; 
+                aiDifficultyContainer.style.display = 'none'; 
+                colorSelectElement.disabled = true;
+                myRole = 'local';
             } else {
-                friendSection.style.display = 'none'; aiDifficultyContainer.style.display = 'block'; 
+                friendSection.style.display = 'none'; 
+                aiDifficultyContainer.style.display = 'block'; 
+                colorSelectElement.disabled = false; // 🔓 เปิดให้เลือกได้ตามปกติ
                 myRole = colorSelectElement.value;
             }
             updateTitleText();
@@ -650,8 +632,21 @@
 
         function startGameSession() {
             if (gameMode === 'online') {
-                if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งก่อนครับ!"); return; }
-                myRole = 'red'; socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') });
+                if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งที่จะท้าดวลก่อนครับ!"); return; }
+                
+                // 🎲 ระบบสุ่มสีอัตโนมัติฝั่งผู้ส่งคำท้า (50/50)
+                const assignedColor = Math.random() < 0.5 ? 'red' : 'white';
+                myRole = assignedColor;
+                document.getElementById('user-color-select').value = assignedColor;
+                
+                updateTitleText();
+                // ส่งค่าสีของตัวเราไปให้เซิร์ฟเวอร์ เพื่อที่ปลายทางจะได้สีที่ตรงข้ามโดยอัตโนมัติ
+                socket.emit('challengePlayer', { 
+                    target: selectedFriend, 
+                    challenger: localStorage.getItem('checkers_username'),
+                    challengerColor: assignedColor 
+                });
+                alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '⚪ สีขาว'} กำลังรอการตอบรับ...`);
             }
             resetGame(); toggleMainPanel();
         }
@@ -673,7 +668,7 @@
             }
         }
 
-        function restartFromModal() { if (gameMode === 'online') { socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') }); } resetGame(); }
+        function restartFromModal() { if (gameMode === 'online') { startGameSession(); } else { resetGame(); } }
 
         function checkMove(startRow, startCol, endRow, endCol) {
             const pType = boardState[startRow][startCol];
@@ -926,15 +921,41 @@
         socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
         socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
         socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
+        
+        // ⚔️ เมื่อมีคำท้าดวลเข้ามาหาเรา
         socket.on('incomingChallenge', (data) => {
-            if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับหรือไม่?`)) {
-                gameMode = 'online'; selectedFriend = data.challenger; myRole = 'white';
-                document.getElementById('game-mode-select').value = 'online'; changeGameMode('online'); selectOnlineFriend(data.challenger);
-                socket.emit('acceptChallenge', { target: data.challenger, responder: localStorage.getItem('checkers_username') });
-                resetGame(); toggleMainPanel();
+            if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับคำท้าหรือไม่?`)) {
+                gameMode = 'online'; 
+                selectedFriend = data.challenger;
+                
+                // 🤖 ระบบเลือกสีให้อัตโนมัติ: ตัวเราจะได้สีตรงข้ามกับผู้ส่งคำท้าเสมอ
+                myRole = (data.challengerColor === 'red') ? 'white' : 'red';
+                
+                document.getElementById('game-mode-select').value = 'online'; 
+                document.getElementById('user-color-select').value = myRole;
+                document.getElementById('user-color-select').disabled = true;
+
+                changeGameMode('online'); 
+                selectOnlineFriend(data.challenger);
+                
+                socket.emit('acceptChallenge', { 
+                    target: data.challenger, 
+                    responder: localStorage.getItem('checkers_username'),
+                    responderColor: myRole
+                });
+                
+                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '⚪ สีขาว'}]`);
+                resetGame(); 
+                if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
             }
         });
-        socket.on('challengeAccepted', (data) => { alert(`🎉 คุณ [${data.responder}] รับคำท้าแล้ว!`); myRole = 'red'; updateTitleText(); resetGame(); });
+
+        // 🎉 เมื่อฝ่ายนู้นยอมรับคำท้าดวลของเราแล้ว
+        socket.on('challengeAccepted', (data) => { 
+            alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
+            updateTitleText(); 
+            resetGame(); 
+        });
 
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
