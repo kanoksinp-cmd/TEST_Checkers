@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>หมากฮอสไทย 3D ออนไลน์ (All-in-One)</title>
     <style>
-        /* 🎨 [ควบรวม CSS ทั้งหมดมาไว้ตรงนี้] */
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
 
         * {
@@ -290,13 +289,11 @@
             [1, 0, 1, 0, 1, 0, 1, 0]
         ];
 
-        let currentTurn = 1; let selectedPiece = null; let isComboPhase = false; 
-        let forcedJumps = []; let isGameOver = false; let gameMode = 'bot'; 
+        let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
         let selectedFriend = ''; let myRole = ''; 
 
         let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
 
-        // เชื่อมต่อเข้า Socket หลังบ้านตรงๆ
         const socket = io({ transports: ['websocket'], upgrade: false }); 
         let onlineFriendsList = []; 
 
@@ -462,8 +459,8 @@
                 [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
             ];
-            currentTurn = 1; selectedPiece = null; isComboPhase = false; isGameOver = false;
-            forcedJumps = findAllAvailableJumps(); updateUI(false); drawPieces();
+            currentTurn = 1; selectedPiece = null; isGameOver = false;
+            updateUI(false); drawPieces();
         }
 
         function checkMove(startRow, startCol, endRow, endCol) {
@@ -475,7 +472,6 @@
             if (absR !== absC) return { valid: false };
 
             if (pType === 1 || pType === 2) {
-                if (isComboPhase && absR === 1) return { valid: false };
                 if (absR === 1) {
                     if ((pType === 1 && rDiff === -1) || (pType === 2 && rDiff === 1)) return { valid: true, type: 'normal' };
                 }
@@ -491,52 +487,13 @@
                     const currR = startRow + (i * stepR); const currC = startCol + (i * stepC);
                     if (boardState[currR][currC] !== 0) piecesInWay.push({ r: currR, c: currC, type: boardState[currR][currC] });
                 }
-                if (piecesInWay.length === 0) { if (isComboPhase) return { valid: false }; return { valid: true, type: 'normal' }; }
+                if (piecesInWay.length === 0) { return { valid: true, type: 'normal' }; }
                 if (piecesInWay.length === 1) {
                     const enemyList = (pType === 3) ? [2, 4] : [1, 3];
                     if (enemyList.includes(piecesInWay[0].type)) return { valid: true, type: 'jump', eat: [{ r: piecesInWay[0].r, c: piecesInWay[0].c }] };
                 }
             }
             return { valid: false };
-        }
-
-        function findAllAvailableJumps() {
-            let jumps = [];
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const pType = boardState[r][c];
-                    const isMatch = (currentTurn === 1 && (pType === 1 || pType === 3)) || (currentTurn === 2 && (pType === 2 || pType === 4));
-                    if (isMatch && hasAvailableJumpsFromPosition(r, c)) jumps.push({ row: r, col: c });
-                }
-            }
-            return jumps;
-        }
-
-        function hasAvailableJumpsFromPosition(r, c) {
-            const pType = boardState[r][c]; const enemyList = (pType === 1 || pType === 3) ? [2, 4] : [1, 3];
-            const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
-            if (pType === 1 || pType === 2) {
-                for (let d of dirs) {
-                    const midR = r + d[0]; const midC = c + d[1]; const targetR = r + (d[0] * 2); const targetC = c + (d[1] * 2);
-                    if (targetR >= 0 && targetR < 8 && targetC >= 0 && targetC < 8) {
-                        if (enemyList.includes(boardState[midR][midC]) && boardState[targetR][targetC] === 0) return true;
-                    }
-                }
-            }
-            if (pType === 3 || pType === 4) {
-                for (let d of dirs) {
-                    let foundEnemy = false;
-                    for (let step = 1; step < 8; step++) {
-                        const currR = r + (d[0] * step); const currC = c + (d[1] * step);
-                        if (currR < 0 || currR >= 8 || currC < 0 || currC >= 8) break;
-                        const currentPiece = boardState[currR][currC];
-                        if (!foundEnemy) {
-                            if (currentPiece === 0) continue; if (enemyList.includes(currentPiece)) foundEnemy = true; else break;
-                        } else { if (currentPiece === 0) return true; else break; }
-                    }
-                }
-            }
-            return false;
         }
 
         function executeMove(sR, sC, eR, eC, result, shouldBroadcast = true) {
@@ -547,9 +504,6 @@
             }
             if (result.type === 'jump') {
                 result.eat.forEach(enemy => boardState[enemy.r][enemy.c] = 0);
-                if (hasAvailableJumpsFromPosition(eR, eC)) {
-                    isComboPhase = true; forcedJumps = [{ row: eR, col: eC }]; drawPieces(); return;
-                }
             }
             if (pType === 1 && eR === 0) boardState[eR][eC] = 3;
             if (pType === 2 && eR === 7) boardState[eR][eC] = 4;
@@ -564,8 +518,8 @@
             if (rPieces === 0) { document.getElementById('turn-display').innerText = "🏆 ฝ่ายสีขาว ชนะ!"; isGameOver = true; drawPieces(); return; }
             if (wPieces === 0) { document.getElementById('turn-display').innerText = "🏆 ฝ่ายสีแดง ชนะ!"; isGameOver = true; drawPieces(); return; }
 
-            currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null; isComboPhase = false;
-            forcedJumps = findAllAvailableJumps(); updateUI(false); drawPieces();
+            currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
+            updateUI(false); drawPieces();
 
             if (currentTurn === 2 && gameMode === 'bot') {
                 setTimeout(() => {
@@ -605,7 +559,6 @@
             const pieceAtTarget = boardState[targetRow][targetCol];
 
             if (pieceAtTarget !== 0) {
-                if (isComboPhase) return;
                 const isRed = (pieceAtTarget === 1 || pieceAtTarget === 3);
                 if ((currentTurn === 1 && isRed) || (currentTurn === 2 && !isRed)) {
                     selectedPiece = { row: targetRow, col: targetCol }; updateUI(true);
@@ -620,9 +573,7 @@
             const el = document.getElementById('turn-display');
             let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีขาว";
             el.className = currentTurn === 1 ? "turn-red" : "turn-white";
-            if (isComboPhase) el.innerText = `💥 ${name} คอมโบกินต่อเนื่อง!`;
-            else if (forcedJumps.length > 0) el.innerText = `⚔️ ${name} มีตาบังคับกิน!`;
-            else el.innerText = hasSelected ? `${name} เลือกหมากแล้ว แตะช่องเพื่อเดิน` : `${name} ถึงตาเดินแล้ว`;
+            el.innerText = hasSelected ? `${name} เลือกหมากแล้ว แตะช่องเพื่อเดิน` : `${name} ถึงตาเดินแล้ว`;
         }
 
         function checkSavedPlayer() {
@@ -657,7 +608,7 @@
 
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
-        forcedJumps = findAllAvailableJumps(); drawPieces(); animate();
+        drawPieces(); animate();
     </script>
 </body>
 </html>
