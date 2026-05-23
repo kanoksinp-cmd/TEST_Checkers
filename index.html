@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หมากฮอสไทย 3D ออนไลน์ (All-in-One)</title>
+    <style>
+        /* 🎨 [ควบรวม CSS ทั้งหมดมาไว้ตรงนี้] */
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background-color: #111111;
+        }
+
+        #turn-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 35px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+            text-align: center;
+            min-width: 340px;
+            letter-spacing: 0.5px;
+        }
+
+        .turn-red {
+            background: linear-gradient(135deg, #d63031, #8e0000);
+            color: #ffffff;
+            border: 2px solid #ff7675;
+        }
+
+        .turn-white {
+            background: linear-gradient(135deg, #ffffff, #dfe6e9);
+            color: #2d3436;
+            border: 2px solid #b2bec3;
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 360px;
+            height: 100%;
+            background: rgba(15, 18, 26, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 30px 25px;
+            color: #f5f6fa;
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: 8px 0 30px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        #control-panel.collapsed {
+            transform: translateX(-360px);
+        }
+
+        #panel-toggle-trigger {
+            position: absolute;
+            top: 20px;
+            right: -45px;
+            width: 45px;
+            height: 45px;
+            background: rgba(15, 18, 26, 0.98);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-left: none;
+            color: #00ffcc;
+            font-size: 18px;
+            cursor: pointer;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 5px 2px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s ease;
+        }
+
+        #panel-toggle-trigger:hover {
+            background: #00ffcc;
+            color: #0f121a;
+        }
+
+        h2 {
+            color: #00ffcc;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h3 {
+            color: #00a8ff;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            border-left: 3px solid #00a8ff;
+            padding-left: 8px;
+        }
+
+        .section {
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #a4b0be;
+            font-weight: 600;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            background: #090b0e;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #ffffff;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        select:focus, input:focus {
+            border-color: #00ffcc;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00ffcc, #00a8ff);
+            color: #0f121a;
+            margin-top: 5px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,255,204,0.4);
+        }
+
+        .btn-danger {
+            background: #ff4757;
+            color: #ffffff;
+            margin-top: 8px;
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        #server-status {
+            font-size: 12px;
+            text-align: center;
+            color: #a4b0be;
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        #friend-select-section {
+            display: none;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
+
+    <div id="control-panel">
+        <button id="panel-toggle-trigger" onclick="toggleMainPanel()">◀</button>
+        <h2 id="h2h-title">หมากฮอสไทย 3D</h2>
+        <p style="font-size:12px; text-align:center; color:#95a5a6; margin-top:-10px;">ระบบกระดานออนไลน์ Real-time</p>
+
+        <div class="section">
+            <h3>👤 โปรไฟล์ผู้เล่น</h3>
+            <div id="auth-section" style="margin-top:10px;">
+                <label>ตั้งชื่อเล่นของคุณ:</label>
+                <input type="text" id="username-input" placeholder="พิมพ์ชื่อภาษาอังกฤษ..." maxlength="15">
+                <button class="btn-primary" onclick="registerPlayer()">เข้าสู่ระบบออนไลน์</button>
+            </div>
+            <div id="profile-section" style="display: none; text-align: center; margin-top: 10px;">
+                <p>ผู้เล่นออนไลน์: <strong id="user-display" style="color:#00ffcc;">-</strong></p>
+                <button class="btn-danger" onclick="logoutPlayer()">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🎮 โหมดการเล่น</h3>
+            <label style="margin-top:10px;">เลือกประเภทการจับคู่:</label>
+            <select id="game-mode-select" onchange="changeGameMode(this.value)">
+                <option value="bot">🤖 สู้กับบอท (AI Computer)</option>
+                <option value="local">👥 เล่นสองคนบนเครื่องเดียวกัน (Local)</option>
+                <option value="online">🌐 ประลองออนไลน์ข้ามเครื่อง (Multiplayer)</option>
+            </select>
+        </div>
+
+        <div class="section" id="friend-select-section">
+            <h3>⚔️ รายชื่อผู้ท้าชิงออนไลน์</h3>
+            <select id="friend-list-select" onchange="selectOnlineFriend(this.value)">
+                <option value="">-- ไม่พบผู้เล่นอื่นออนไลน์ --</option>
+            </select>
+        </div>
+
+        <button class="btn-primary" style="padding:15px; font-size:16px; background: linear-gradient(135deg, #f1c40f, #f39c12); color:#111;" onclick="startGameSession()">🏁 เริ่มเกมใหม่ / รีเซ็ต</button>
+
+        <div class="section">
+            <h3>🎨 ปรับแต่งกระดาน 3D</h3>
+            <div style="margin-top:10px; display:flex; gap:10px; flex-direction:column;">
+                <div>
+                    <label>รูปแบบสกินกระดาน:</label>
+                    <select onchange="changeBoardSkin(this.value)">
+                        <option value="classic">Classic Wood</option>
+                        <option value="cyber">Cyber Neon</option>
+                        <option value="marble">Premium Marble</option>
+                    </select>
+                </div>
+                <div>
+                    <label>รูปแบบเนื้อผิวหมาก:</label>
+                    <select onchange="changePieceSkin(this.value)">
+                        <option value="matte">Matte Plastic (ผิวด้าน)</option>
+                        <option value="metallic">Metallic Chrome (โลหะเงา)</option>
+                        <option value="neon">Glow Neon (เรืองแสง)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="server-status">กำลังตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์...</div>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 8, 8); 
+        camera.lookAt(0, -0.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.35);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        let boardState = [
+            [0, 2, 0, 2, 0, 2, 0, 2],
+            [2, 0, 2, 0, 2, 0, 2, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0, 1, 0, 1],
+            [1, 0, 1, 0, 1, 0, 1, 0]
+        ];
+
+        let currentTurn = 1; let selectedPiece = null; let isComboPhase = false; 
+        let forcedJumps = []; let isGameOver = false; let gameMode = 'bot'; 
+        let selectedFriend = ''; let myRole = ''; 
+
+        let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
+
+        // เชื่อมต่อเข้า Socket หลังบ้านตรงๆ
+        const socket = io({ transports: ['websocket'], upgrade: false }); 
+        let onlineFriendsList = []; 
+
+        socket.on('connect', () => {
+            document.getElementById('server-status').innerText = '🟢 เชื่อมต่อเซิร์ฟเวอร์สำเร็จแล้ว';
+            document.getElementById('server-status').style.color = '#00ffcc';
+            checkSavedPlayer(); 
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('server-status').innerText = '🔴 ขาดการเชื่อมต่อ';
+            document.getElementById('server-status').style.color = '#ff4d4d';
+        });
+
+        const SKINS = {
+            board: {
+                classic: { dark: 0x2c3e50, light: 0xecf0f1, roughness: 0.6, metalness: 0.1 },
+                cyber:   { dark: 0x0f172a, light: 0x1e293b, roughness: 0.2, metalness: 0.8 }, 
+                marble:  { dark: 0x111111, light: 0xffffff, roughness: 0.1, metalness: 0.0 }
+            },
+            pieces: {
+                matte: {
+                    red: { color: 0xcc0000, roughness: 0.6, metalness: 0.1, emissive: 0x000000 },
+                    white: { color: 0xeeeeee, roughness: 0.6, metalness: 0.1, emissive: 0x000000 }
+                },
+                metallic: {
+                    red: { color: 0xb71c1c, roughness: 0.15, metalness: 0.9, emissive: 0x000000 }, 
+                    white: { color: 0xdfe6e9, roughness: 0.1, metalness: 0.95, emissive: 0x000000 } 
+                },
+                neon: {
+                    red: { color: 0xff0055, roughness: 0.3, metalness: 0.3, emissive: 0xff0022 }, 
+                    white: { color: 0x00ffcc, roughness: 0.3, metalness: 0.3, emissive: 0x00aa88 }
+                }
+            }
+        };
+
+        let currentBoardSkin = 'classic'; let currentPieceSkin = 'matte';
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                const isDark = (r + c) % 2 === 1;
+                const skin = SKINS.board[currentBoardSkin];
+                const tileGeo = new THREE.BoxGeometry(1, 0.1, 1);
+                const tileMat = new THREE.MeshStandardMaterial({ 
+                    color: isDark ? skin.dark : skin.light, roughness: skin.roughness, metalness: skin.metalness
+                });
+                const tile = new THREE.Mesh(tileGeo, tileMat);
+                tile.position.set(c - 3.5, 0, r - 3.5);
+                tile.userData = { row: r, col: c, isDarkSkin: isDark };
+                scene.add(tile);
+                tiles3DObjects.push(tile);
+            }
+        }
+
+        function drawPieces() {
+            piece3DObjects.forEach(p => scene.remove(p));
+            piece3DObjects = [];
+            const pSkin = SKINS.pieces[currentPieceSkin];
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const val = boardState[r][c];
+                    if (val !== 0) {
+                        let pieceMesh;
+                        const isRed = (val === 1 || val === 3);
+                        const isKing = (val === 3 || val === 4);
+                        const matConfig = isRed ? pSkin.red : pSkin.white;
+                        const mat = new THREE.MeshStandardMaterial(matConfig);
+
+                        if (!isKing) {
+                            const geo = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
+                            pieceMesh = new THREE.Mesh(geo, mat);
+                            pieceMesh.position.set(c - 3.5, 0.125, r - 3.5);
+                        } else {
+                            const group = new THREE.Group();
+                            const geo1 = new THREE.CylinderGeometry(0.35, 0.35, 0.12, 32);
+                            const m1 = new THREE.Mesh(geo1, mat); m1.position.y = 0.08; group.add(m1);
+                            const geo2 = new THREE.CylinderGeometry(0.32, 0.32, 0.12, 32);
+                            const m2 = new THREE.Mesh(geo2, mat); m2.position.y = 0.20; group.add(m2);
+                            pieceMesh = group; pieceMesh.position.set(c - 3.5, 0, r - 3.5);
+                        }
+                        scene.add(pieceMesh); piece3DObjects.push(pieceMesh);
+                    }
+                }
+            }
+        }
+
+        function changeBoardSkin(skinName) {
+            currentBoardSkin = skinName;
+            const skin = SKINS.board[skinName];
+            tiles3DObjects.forEach(tile => {
+                const isDark = tile.userData.isDarkSkin;
+                tile.material.color.setHex(isDark ? skin.dark : skin.light);
+            });
+        }
+
+        function changePieceSkin(skinName) { currentPieceSkin = skinName; drawPieces(); }
+
+        function renderOnlineFriends() {
+            const selectBox = document.getElementById('friend-list-select');
+            if (!selectBox) return;
+            selectBox.innerHTML = '<option value="">-- กรุณาเลือกคู่แข่ง --</option>';
+            let mySavedName = localStorage.getItem('checkers_username') || '';
+            let counter = 0;
+
+            onlineFriendsList.forEach(player => {
+                if (player.username && player.username !== mySavedName) {
+                    const option = document.createElement('option');
+                    option.value = player.username;
+                    option.innerText = `🟢 ${player.username}`;
+                    selectBox.appendChild(option);
+                    counter++;
+                }
+            });
+            if (counter === 0) selectBox.innerHTML = '<option value="">❌ ไม่มีผู้เล่นคนอื่นออนไลน์</option>';
+        }
+
+        function changeGameMode(mode) {
+            gameMode = mode;
+            const friendSection = document.getElementById('friend-select-section');
+            const titleEl = document.getElementById('h2h-title');
+            
+            if (mode === 'online') {
+                friendSection.style.display = 'block'; renderOnlineFriends();
+                titleEl.innerText = "แดง (คุณ) VS ขาว (เลือกคู่แข่ง...)";
+            } else if (mode === 'local') {
+                friendSection.style.display = 'none'; myRole = 'local';
+                titleEl.innerText = "แดง (ผู้เล่น 1) VS ขาว (ผู้เล่น 2)";
+            } else {
+                friendSection.style.display = 'none'; myRole = 'red';
+                titleEl.innerText = "แดง (คุณ) VS ขาว (บอท AI)";
+            }
+            resetGame();
+        }
+
+        function selectOnlineFriend(friendName) {
+            selectedFriend = friendName;
+            if (gameMode === 'online' && friendName !== "") {
+                document.getElementById('h2h-title').innerText = `แดง (คุณ) VS ขาว (${selectedFriend})`;
+            }
+        }
+
+        function toggleMainPanel() {
+            const panel = document.getElementById('control-panel');
+            panel.classList.toggle('collapsed');
+            document.getElementById('panel-toggle-trigger').innerText = panel.classList.contains('collapsed') ? '▶' : '◀';
+        }
+
+        function startGameSession() {
+            if (gameMode === 'online') {
+                if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งก่อนครับ!"); return; }
+                myRole = 'red';
+                socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') });
+            }
+            resetGame();
+            toggleMainPanel();
+        }
+
+        function resetGame() {
+            boardState = [
+                [0, 2, 0, 2, 0, 2, 0, 2], [2, 0, 2, 0, 2, 0, 2, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
+            ];
+            currentTurn = 1; selectedPiece = null; isComboPhase = false; isGameOver = false;
+            forcedJumps = findAllAvailableJumps(); updateUI(false); drawPieces();
+        }
+
+        function checkMove(startRow, startCol, endRow, endCol) {
+            const pType = boardState[startRow][startCol];
+            if (boardState[endRow][endCol] !== 0) return { valid: false };
+            const rDiff = endRow - startRow; const cDiff = endCol - startCol;
+            const absR = Math.abs(rDiff); const absC = Math.abs(cDiff);
+
+            if (absR !== absC) return { valid: false };
+
+            if (pType === 1 || pType === 2) {
+                if (isComboPhase && absR === 1) return { valid: false };
+                if (absR === 1) {
+                    if ((pType === 1 && rDiff === -1) || (pType === 2 && rDiff === 1)) return { valid: true, type: 'normal' };
+                }
+                if (absR === 2) {
+                    const midR = startRow + rDiff / 2; const midC = startCol + cDiff / 2;
+                    const enemyList = pType === 1 ? [2, 4] : [1, 3];
+                    if (enemyList.includes(boardState[midR][midC])) return { valid: true, type: 'jump', eat: [{ r: midR, c: midC }] };
+                }
+            }
+            if (pType === 3 || pType === 4) {
+                const stepR = rDiff / absR; const stepC = cDiff / absC; let piecesInWay = [];
+                for (let i = 1; i < absR; i++) {
+                    const currR = startRow + (i * stepR); const currC = startCol + (i * stepC);
+                    if (boardState[currR][currC] !== 0) piecesInWay.push({ r: currR, c: currC, type: boardState[currR][currC] });
+                }
+                if (piecesInWay.length === 0) { if (isComboPhase) return { valid: false }; return { valid: true, type: 'normal' }; }
+                if (piecesInWay.length === 1) {
+                    const enemyList = (pType === 3) ? [2, 4] : [1, 3];
+                    if (enemyList.includes(piecesInWay[0].type)) return { valid: true, type: 'jump', eat: [{ r: piecesInWay[0].r, c: piecesInWay[0].c }] };
+                }
+            }
+            return { valid: false };
+        }
+
+        function findAllAvailableJumps() {
+            let jumps = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const pType = boardState[r][c];
+                    const isMatch = (currentTurn === 1 && (pType === 1 || pType === 3)) || (currentTurn === 2 && (pType === 2 || pType === 4));
+                    if (isMatch && hasAvailableJumpsFromPosition(r, c)) jumps.push({ row: r, col: c });
+                }
+            }
+            return jumps;
+        }
+
+        function hasAvailableJumpsFromPosition(r, c) {
+            const pType = boardState[r][c]; const enemyList = (pType === 1 || pType === 3) ? [2, 4] : [1, 3];
+            const dirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+            if (pType === 1 || pType === 2) {
+                for (let d of dirs) {
+                    const midR = r + d[0]; const midC = c + d[1]; const targetR = r + (d[0] * 2); const targetC = c + (d[1] * 2);
+                    if (targetR >= 0 && targetR < 8 && targetC >= 0 && targetC < 8) {
+                        if (enemyList.includes(boardState[midR][midC]) && boardState[targetR][targetC] === 0) return true;
+                    }
+                }
+            }
+            if (pType === 3 || pType === 4) {
+                for (let d of dirs) {
+                    let foundEnemy = false;
+                    for (let step = 1; step < 8; step++) {
+                        const currR = r + (d[0] * step); const currC = c + (d[1] * step);
+                        if (currR < 0 || currR >= 8 || currC < 0 || currC >= 8) break;
+                        const currentPiece = boardState[currR][currC];
+                        if (!foundEnemy) {
+                            if (currentPiece === 0) continue; if (enemyList.includes(currentPiece)) foundEnemy = true; else break;
+                        } else { if (currentPiece === 0) return true; else break; }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function executeMove(sR, sC, eR, eC, result, shouldBroadcast = true) {
+            let pType = boardState[sR][sC]; boardState[eR][eC] = pType; boardState[sR][sC] = 0;
+
+            if (gameMode === 'online' && shouldBroadcast) {
+                socket.emit('movePiece', { target: selectedFriend, sR: sR, sC: sC, eR: eR, eC: eC, result: result });
+            }
+            if (result.type === 'jump') {
+                result.eat.forEach(enemy => boardState[enemy.r][enemy.c] = 0);
+                if (hasAvailableJumpsFromPosition(eR, eC)) {
+                    isComboPhase = true; forcedJumps = [{ row: eR, col: eC }]; drawPieces(); return;
+                }
+            }
+            if (pType === 1 && eR === 0) boardState[eR][eC] = 3;
+            if (pType === 2 && eR === 7) boardState[eR][eC] = 4;
+            endTurnProcess();
+        }
+
+        function endTurnProcess() {
+            let rPieces = 0, wPieces = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) wPieces++; }
+            }
+            if (rPieces === 0) { document.getElementById('turn-display').innerText = "🏆 ฝ่ายสีขาว ชนะ!"; isGameOver = true; drawPieces(); return; }
+            if (wPieces === 0) { document.getElementById('turn-display').innerText = "🏆 ฝ่ายสีแดง ชนะ!"; isGameOver = true; drawPieces(); return; }
+
+            currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null; isComboPhase = false;
+            forcedJumps = findAllAvailableJumps(); updateUI(false); drawPieces();
+
+            if (currentTurn === 2 && gameMode === 'bot') {
+                setTimeout(() => {
+                    let availableMoves = [];
+                    for (let r=0; r<8; r++) {
+                        for (let c=0; c<8; c++) {
+                            if (boardState[r][c] === 2 || boardState[r][c] === 4) {
+                                for (let tr=0; tr<8; tr++) {
+                                    for (let tc=0; tc<8; tc++) {
+                                        let res = checkMove(r, c, tr, tc); if (res.valid) availableMoves.push({ sR: r, sC: c, eR: tr, eC: tc, res: res });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (availableMoves.length > 0) {
+                        let m = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                        executeMove(m.sR, m.sC, m.eR, m.eC, m.res, true);
+                    }
+                }, 800);
+            }
+        }
+
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        window.addEventListener('click', (event) => {
+            if (isGameOver) return;
+            if (gameMode === 'online') {
+                if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'white') return;
+            }
+            if (event.clientX < 360 && !document.getElementById('control-panel').classList.contains('collapsed')) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(tiles3DObjects); if (intersects.length === 0) return;
+
+            const targetRow = intersects[0].object.userData.row; const targetCol = intersects[0].object.userData.col;
+            const pieceAtTarget = boardState[targetRow][targetCol];
+
+            if (pieceAtTarget !== 0) {
+                if (isComboPhase) return;
+                const isRed = (pieceAtTarget === 1 || pieceAtTarget === 3);
+                if ((currentTurn === 1 && isRed) || (currentTurn === 2 && !isRed)) {
+                    selectedPiece = { row: targetRow, col: targetCol }; updateUI(true);
+                }
+            } else if (selectedPiece) {
+                const result = checkMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol);
+                if (result.valid) executeMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol, result, true);
+            }
+        });
+
+        function updateUI(hasSelected) {
+            const el = document.getElementById('turn-display');
+            let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีขาว";
+            el.className = currentTurn === 1 ? "turn-red" : "turn-white";
+            if (isComboPhase) el.innerText = `💥 ${name} คอมโบกินต่อเนื่อง!`;
+            else if (forcedJumps.length > 0) el.innerText = `⚔️ ${name} มีตาบังคับกิน!`;
+            else el.innerText = hasSelected ? `${name} เลือกหมากแล้ว แตะช่องเพื่อเดิน` : `${name} ถึงตาเดินแล้ว`;
+        }
+
+        function checkSavedPlayer() {
+            const savedName = localStorage.getItem('checkers_username');
+            if (savedName && socket.connected) {
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('profile-section').style.display = 'block';
+                document.getElementById('user-display').innerText = savedName;
+                socket.emit('registerPlayer', savedName);
+            }
+        }
+
+        function registerPlayer() {
+            const username = document.getElementById('username-input').value.trim();
+            if (!username) return; localStorage.setItem('checkers_username', username); window.location.reload();
+        }
+
+        function logoutPlayer() { localStorage.removeItem('checkers_username'); window.location.reload(); }
+
+        socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+        socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+        socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
+        socket.on('incomingChallenge', (data) => {
+            if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับหรือไม่?`)) {
+                gameMode = 'online'; selectedFriend = data.challenger; myRole = 'white';
+                document.getElementById('game-mode-select').value = 'online'; changeGameMode('online'); selectOnlineFriend(data.challenger);
+                socket.emit('acceptChallenge', { target: data.challenger, responder: localStorage.getItem('checkers_username') });
+                resetGame(); toggleMainPanel();
+            }
+        });
+        socket.on('challengeAccepted', (data) => { alert(`🎉 คุณ [${data.responder}] รับคำท้าแล้ว!`); resetGame(); });
+
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+        forcedJumps = findAllAvailableJumps(); drawPieces(); animate();
+    </script>
+</body>
+</html>
