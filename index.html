@@ -20,18 +20,25 @@
             background-color: #111111;
         }
 
-        #turn-display {
+        #turn-display-container {
             position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #turn-display {
             padding: 12px 35px;
             font-size: 18px;
             font-weight: 700;
             border-radius: 50px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 10;
             text-align: center;
             min-width: 340px;
             letter-spacing: 0.5px;
@@ -47,6 +54,25 @@
             background: linear-gradient(135deg, #ffffff, #dfe6e9);
             color: #2d3436;
             border: 2px solid #b2bec3;
+        }
+
+        /* ⏳ แถบเวลานับถอยหลังตอนกินต่อเนื่อง */
+        #combo-timer-display {
+            display: none;
+            background: rgba(255, 71, 87, 0.9);
+            color: white;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+            animation: pulse-border 1s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.8; }
         }
 
         /* 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบใต้กระดาน */
@@ -287,7 +313,10 @@
 </head>
 <body>
 
-    <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
+    <div id="turn-display-container">
+        <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
+        <div id="combo-timer-display">⚡ ต้องกินต่อ! เวลาที่เหลือ: 5.0 วินาที</div>
+    </div>
 
     <!-- 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบใต้กระดาน -->
     <button id="login-shortcut-btn" onclick="openLoginPanel()">👤 จัดการโปรไฟล์ / เข้าสู่ระบบ</button>
@@ -328,7 +357,7 @@
                 <option value="online">🌐 ประลองออนไลน์ข้ามเครื่อง (Multiplayer)</option>
             </select>
 
-            <!-- 🤖 ส่วนเลือกความยากของ Bot AI (เพิ่มใหม่) -->
+            <!-- 🤖 ส่วนเลือกความยากของ Bot AI -->
             <div id="ai-difficulty-container" style="margin-top: 12px;">
                 <label>ระดับความยากของบอท AI:</label>
                 <select id="ai-difficulty-select" onchange="changeAiDifficulty(this.value)">
@@ -402,8 +431,13 @@
         ];
 
         let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
-        let aiDifficulty = 'medium'; // ตัวแปรตั้งค่าความยากตั้งต้น
-        let selectedFriend = ''; let myRole = ''; 
+        let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = ''; 
+
+        // ⚡ เพิ่มตัวแปรสำหรับระบบกินต่อเนื่องสูงสุด 3 ครั้ง และเวลา 5 วินาที
+        let jumpCount = 0; 
+        let comboPiece = null; 
+        let comboTimer = null;
+        let comboTimeLeft = 5.0;
 
         let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
 
@@ -531,61 +565,29 @@
             const titleEl = document.getElementById('h2h-title');
             
             if (mode === 'online') {
-                friendSection.style.display = 'block';
-                aiDifficultyContainer.style.display = 'none'; // ซ่อนความยากบอทในโหมดออนไลน์
-                renderOnlineFriends();
+                friendSection.style.display = 'block'; aiDifficultyContainer.style.display = 'none'; renderOnlineFriends();
                 titleEl.innerText = "แดง (คุณ) VS ขาว (เลือกคู่แข่ง...)";
             } else if (mode === 'local') {
-                friendSection.style.display = 'none';
-                aiDifficultyContainer.style.display = 'none'; // ซ่อนความยากบอทในโหมดเล่นด้วยกัน
-                myRole = 'local';
+                friendSection.style.display = 'none'; aiDifficultyContainer.style.display = 'none'; myRole = 'local';
                 titleEl.innerText = "แดง (ผู้เล่น 1) VS ขาว (ผู้เล่น 2)";
             } else {
-                friendSection.style.display = 'none';
-                aiDifficultyContainer.style.display = 'block'; // แสดงความยากบอท
-                myRole = 'red';
+                friendSection.style.display = 'none'; aiDifficultyContainer.style.display = 'block'; myRole = 'red';
                 titleEl.innerText = "แดง (คุณ) VS ขาว (บอท AI)";
             }
             resetGame();
         }
 
-        /* 🤖 ฟังก์ชันอัปเดตระดับความยากของ AI */
-        function changeAiDifficulty(diff) {
-            aiDifficulty = diff;
-        }
-
-        function selectOnlineFriend(friendName) {
-            selectedFriend = friendName;
-            if (gameMode === 'online' && friendName !== "") {
-                document.getElementById('h2h-title').innerText = `แดง (คุณ) VS ขาว (${selectedFriend})`;
-            }
-        }
-
-        function toggleMainPanel() {
-            const panel = document.getElementById('control-panel');
-            panel.classList.toggle('collapsed');
-            document.getElementById('panel-toggle-trigger').innerText = panel.classList.contains('collapsed') ? '▶' : '◀';
-        }
-
-        function openLoginPanel() {
-            const panel = document.getElementById('control-panel');
-            if (panel.classList.contains('collapsed')) {
-                toggleMainPanel();
-            }
-            const inputField = document.getElementById('username-input');
-            if (inputField && document.getElementById('auth-section').style.display !== 'none') {
-                inputField.focus();
-            }
-        }
+        function changeAiDifficulty(diff) { aiDifficulty = diff; }
+        function selectOnlineFriend(friendName) { selectedFriend = friendName; if (gameMode === 'online' && friendName !== "") { document.getElementById('h2h-title').innerText = `แดง (คุณ) VS ขาว (${selectedFriend})`; } }
+        function toggleMainPanel() { const panel = document.getElementById('control-panel'); panel.classList.toggle('collapsed'); document.getElementById('panel-toggle-trigger').innerText = panel.classList.contains('collapsed') ? '▶' : '◀'; }
+        function openLoginPanel() { const panel = document.getElementById('control-panel'); if (panel.classList.contains('collapsed')) { toggleMainPanel(); } const inputField = document.getElementById('username-input'); if (inputField && document.getElementById('auth-section').style.display !== 'none') { inputField.focus(); } }
 
         function startGameSession() {
             if (gameMode === 'online') {
                 if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งก่อนครับ!"); return; }
-                myRole = 'red';
-                socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') });
+                myRole = 'red'; socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') });
             }
-            resetGame();
-            toggleMainPanel();
+            resetGame(); toggleMainPanel();
         }
 
         function resetGame() {
@@ -596,16 +598,12 @@
                 [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
             ];
             currentTurn = 1; selectedPiece = null; isGameOver = false;
+            jumpCount = 0; comboPiece = null; stopComboTimer();
             document.getElementById('game-over-modal').style.display = 'none';
             updateUI(false); drawPieces();
         }
 
-        function restartFromModal() {
-            if (gameMode === 'online') {
-                socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') });
-            }
-            resetGame();
-        }
+        function restartFromModal() { if (gameMode === 'online') { socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') }); } resetGame(); }
 
         function checkMove(startRow, startCol, endRow, endCol) {
             const pType = boardState[startRow][startCol];
@@ -640,6 +638,57 @@
             return { valid: false };
         }
 
+        // ⚡ ฟังก์ชันเช็กว่าหมากตัวนี้มีตากระโดดกินเหลืออยู่อีกไหม
+        function hasMoreJumps(r, c) {
+            for (let tr = 0; tr < 8; tr++) {
+                for (let tc = 0; tc < 8; tc++) {
+                    let res = checkMove(r, c, tr, tc);
+                    if (res.valid && res.type === 'jump') {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /* ⏳ จัดการเวลานับถอยหลัง 5 วินาทีของคอมโบกินต่อเนื่อง */
+        function startComboTimer() {
+            stopComboTimer();
+            comboTimeLeft = 5.0;
+            const timerDiv = document.getElementById('combo-timer-display');
+            timerDiv.style.display = 'block';
+            timerDiv.innerText = `⚡ ต้องกินต่อ! เวลาที่เหลือ: ${comboTimeLeft.toFixed(1)} วินาที`;
+
+            comboTimer = setInterval(() => {
+                comboTimeLeft -= 0.1;
+                if (comboTimeLeft <= 0) {
+                    stopComboTimer();
+                    // ⚠️ หมดเวลา 5 วินาที ตัดสิทธิ์และสลับเทิร์นทันที
+                    jumpCount = 0;
+                    comboPiece = null;
+                    forceSwitchTurn();
+                } else {
+                    timerDiv.innerText = `⚡ ต้องกินต่อ! เวลาที่เหลือ: ${comboTimeLeft.toFixed(1)} วินาที`;
+                }
+            }, 100);
+        }
+
+        function stopComboTimer() {
+            if (comboTimer) {
+                clearInterval(comboTimer);
+                comboTimer = null;
+            }
+            document.getElementById('combo-timer-display').style.display = 'none';
+        }
+
+        function forceSwitchTurn() {
+            currentTurn = currentTurn === 1 ? 2 : 1;
+            selectedPiece = null;
+            updateUI(false);
+            drawPieces();
+            triggerBotAiIfNeeded();
+        }
+
         function executeMove(sR, sC, eR, eC, result, shouldBroadcast = true) {
             let pType = boardState[sR][sC]; boardState[eR][eC] = pType; boardState[sR][sC] = 0;
 
@@ -648,14 +697,58 @@
             }
             if (result.type === 'jump') {
                 result.eat.forEach(enemy => boardState[enemy.r][enemy.c] = 0);
+                jumpCount++; // เพิ่มจำนวนการกิน
+            } else {
+                jumpCount = 0; // หากเดินปกติ จะนับรอบกินใหม่
             }
+
             if (pType === 1 && eR === 0) boardState[eR][eC] = 3;
             if (pType === 2 && eR === 7) boardState[eR][eC] = 4;
-            endTurnProcess();
+
+            // ⚡ เช็กเงื่อนไขกินต่อเนื่อง (กินได้สูงสุด 3 ครั้ง และยังมีตากินต่อ)
+            if (result.type === 'jump' && jumpCount < 3 && hasMoreJumps(eR, eC)) {
+                comboPiece = { row: eR, col: eC };
+                selectedPiece = comboPiece; // ล็อกเป้าให้เลือกตัวเดิม
+                updateUI(true);
+                drawPieces();
+
+                // ถ้ารอบนี้เป็นตาของบอท ให้บอทคิดแท็กทีมกินต่อทันที
+                if (currentTurn === 2 && gameMode === 'bot') {
+                    setTimeout(() => executeBotComboMove(eR, eC), 600);
+                } else {
+                    // ถ้าเป็นตาคนเล่น ให้เริ่มนับถอยหลัง 5 วินาที
+                    startComboTimer();
+                }
+            } else {
+                // จบคอมโบหรือเดินปกติ -> ล้างค่าแล้วเปลี่ยนตา
+                stopComboTimer();
+                jumpCount = 0;
+                comboPiece = null;
+                endTurnProcess();
+            }
+        }
+
+        // 🤖 ลอจิกการกดกินคอมโบต่อของบอท AI
+        function executeBotComboMove(r, c) {
+            let possibleComboMoves = [];
+            for (let tr = 0; tr < 8; tr++) {
+                for (let tc = 0; tc < 8; tc++) {
+                    let res = checkMove(r, c, tr, tc);
+                    if (res.valid && res.type === 'jump') {
+                        possibleComboMoves.push({ sR: r, sC: c, eR: tr, eC: tc, res: res });
+                    }
+                }
+            }
+            if (possibleComboMoves.length > 0) {
+                let m = possibleComboMoves[Math.floor(Math.random() * possibleComboMoves.length)];
+                executeMove(m.sR, m.sC, m.eR, m.eC, m.res, true);
+            } else {
+                stopComboTimer(); jumpCount = 0; comboPiece = null; endTurnProcess();
+            }
         }
 
         function triggerGameOver(winnerName) {
-            isGameOver = true;
+            isGameOver = true; stopComboTimer();
             document.getElementById('turn-display').innerText = `🏆 ฝ่าย${winnerName} ชนะ!`;
             document.getElementById('winner-text').innerText = `ฝ่าย${winnerName} ชนะ!`;
             document.getElementById('game-over-modal').style.display = 'flex';
@@ -672,12 +765,15 @@
 
             currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
             updateUI(false); drawPieces();
+            triggerBotAiIfNeeded();
+        }
 
-            /* 🤖 ประมวลผลลอจิกการคิดของ Bot AI ตามความยาก */
-            if (currentTurn === 2 && gameMode === 'bot') {
+        /* แยกลอจิกเรียกตาเดินของ Bot ออกมา */
+        function triggerBotAiIfNeeded() {
+            if (currentTurn === 2 && gameMode === 'bot' && !isGameOver) {
                 setTimeout(() => {
                     let availableMoves = [];
-                    let jumpMoves = []; // แยกเก็บตาเดินที่เป็นตากินหมากโดยเฉพาะ
+                    let jumpMoves = [];
 
                     for (let r=0; r<8; r++) {
                         for (let c=0; c<8; c++) {
@@ -686,7 +782,7 @@
                                     for (let tc=0; tc<8; tc++) {
                                         let res = checkMove(r, c, tr, tc); 
                                         if (res.valid) {
-                                            let moveData = { sR: r, sC: c, eR: tr, eC: tc, res: res, isKing: boardState[r][c] === 4 };
+                                            let moveData = { sR: r, sC: c, eR: tr, eC: tc, res: res };
                                             availableMoves.push(moveData);
                                             if (res.type === 'jump') jumpMoves.push(moveData);
                                         }
@@ -698,33 +794,16 @@
 
                     if (availableMoves.length > 0) {
                         let selectedMove = null;
-
                         if (aiDifficulty === 'easy') {
-                            // 🟢 ง่าย: สุ่มจากตาเดินทั้งหมดที่มี
                             selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-                        } 
-                        else if (aiDifficulty === 'medium') {
-                            // 🟡 ปานกลาง: ถ้ามีตากินต้องกินก่อน ถ้าไม่มีค่อยสุ่มเดินปกติ
-                            if (jumpMoves.length > 0) {
-                                selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)];
-                            } else {
-                                selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-                            }
-                        } 
-                        else if (aiDifficulty === 'hard') {
-                            // 🔴 ยาก: เน้นกินก่อน ถ้าไม่มีตากินจะเลือกเดินตัวที่เป็นขุน หรือเดินหมากธรรมดาเพื่อมุ่งหน้าไปเป็นขุน (แถว r=7)
-                            if (jumpMoves.length > 0) {
-                                selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)];
-                            } else {
-                                // พยายามกรองหาตาเดินที่ทำให้หมากมุ่งไปข้างหน้ามากที่สุด (เข้าใกล้แถวที่ 7 เพื่อเปลี่ยนเป็นขุน)
-                                let bestMoves = availableMoves.sort((a, b) => b.eR - a.eR);
-                                selectedMove = bestMoves[0]; // เลือกตาเดินที่ได้ระยะก้าวหน้าสูงสุด
-                            }
+                        } else if (aiDifficulty === 'medium') {
+                            if (jumpMoves.length > 0) { selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)]; } 
+                            else { selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)]; }
+                        } else if (aiDifficulty === 'hard') {
+                            if (jumpMoves.length > 0) { selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)]; } 
+                            else { let bestMoves = availableMoves.sort((a, b) => b.eR - a.eR); selectedMove = bestMoves[0]; }
                         }
-
-                        if (selectedMove) {
-                            executeMove(selectedMove.sR, selectedMove.sC, selectedMove.eR, selectedMove.eC, selectedMove.res, true);
-                        }
+                        if (selectedMove) { executeMove(selectedMove.sR, selectedMove.sC, selectedMove.eR, selectedMove.eC, selectedMove.res, true); }
                     }
                 }, 800);
             }
@@ -746,6 +825,11 @@
             const targetRow = intersects[0].object.userData.row; const targetCol = intersects[0].object.userData.col;
             const pieceAtTarget = boardState[targetRow][targetCol];
 
+            // ⚡ ถ้าระบบกำลังล็อกคอมโบอยู่ จะกดเลือกเปลี่ยนไปเดินตัวอื่นไม่ได้เด็ดขาด
+            if (comboPiece && pieceAtTarget !== 0) {
+                if (targetRow !== comboPiece.row || targetCol !== comboPiece.col) return;
+            }
+
             if (pieceAtTarget !== 0) {
                 const isRed = (pieceAtTarget === 1 || pieceAtTarget === 3);
                 if ((currentTurn === 1 && isRed) || (currentTurn === 2 && !isRed)) {
@@ -753,7 +837,11 @@
                 }
             } else if (selectedPiece) {
                 const result = checkMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol);
-                if (result.valid) executeMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol, result, true);
+                if (result.valid) {
+                    // ถ้าระบบอยู่ในคอมโบ ต้องเดินแบบกิน (jump) เท่านั้น ห้ามเดินธรรมดา
+                    if (comboPiece && result.type !== 'jump') return;
+                    executeMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol, result, true);
+                }
             }
         });
 
@@ -761,7 +849,11 @@
             const el = document.getElementById('turn-display');
             let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีขาว";
             el.className = currentTurn === 1 ? "turn-red" : "turn-white";
-            el.innerText = hasSelected ? `${name} เลือกหมากแล้ว แตะช่องเพื่อเดิน` : `${name} ถึงตาเดินแล้ว`;
+            if (comboPiece) {
+                el.innerText = `💥 ${name} กำลังทำคอมโบกินต่อเนื่อง! (ครั้งที่ ${jumpCount})`;
+            } else {
+                el.innerText = hasSelected ? `${name} เลือกหมากแล้ว แตะช่องเพื่อเดิน` : `${name} ถึงตาเดินแล้ว`;
+            }
         }
 
         function checkSavedPlayer() {
@@ -775,11 +867,7 @@
             }
         }
 
-        function registerPlayer() {
-            const username = document.getElementById('username-input').value.trim();
-            if (!username) return; localStorage.setItem('checkers_username', username); window.location.reload();
-        }
-
+        function registerPlayer() { const username = document.getElementById('username-input').value.trim(); if (!username) return; localStorage.setItem('checkers_username', username); window.location.reload(); }
         function logoutPlayer() { localStorage.removeItem('checkers_username'); window.location.reload(); }
 
         socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
