@@ -49,6 +49,37 @@
             border: 2px solid #b2bec3;
         }
 
+        /* 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบใต้กระดาน */
+        #login-shortcut-btn {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 18, 26, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            color: #00ffcc;
+            padding: 12px 25px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        #login-shortcut-btn:hover {
+            background: rgba(0, 255, 204, 0.2);
+            border-color: #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+            transform: translateX(-50%) translateY(-2px);
+        }
+
         #control-panel {
             position: absolute;
             top: 0;
@@ -258,7 +289,10 @@
 
     <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
 
-    <!-- 🏆 หน้าต่างจบเกม (เพิ่มเข้ามาใหม่) -->
+    <!-- 🔘 ปุ่มเรียกหน้าต่างเข้าสู่ระบบ (เพิ่มเข้ามาใหม่ใต้กระดาน) -->
+    <button id="login-shortcut-btn" onclick="openLoginPanel()">👤 จัดการโปรไฟล์ / เข้าสู่ระบบ</button>
+
+    <!-- 🏆 หน้าต่างจบเกม -->
     <div id="game-over-modal">
         <div class="modal-content">
             <h1>🎉 จบการแข่งขัน 🎉</h1>
@@ -267,8 +301,8 @@
         </div>
     </div>
 
-    <div id="control-panel">
-        <button id="panel-toggle-trigger" onclick="toggleMainPanel()">◀</button>
+    <div id="control-panel" class="collapsed">
+        <button id="panel-toggle-trigger" onclick="toggleMainPanel()">▶</button>
         <h2 id="h2h-title">หมากฮอสไทย 3D</h2>
         <p style="font-size:12px; text-align:center; color:#95a5a6; margin-top:-10px;">ระบบกระดานออนไลน์ Real-time</p>
 
@@ -510,6 +544,18 @@
             document.getElementById('panel-toggle-trigger').innerText = panel.classList.contains('collapsed') ? '▶' : '◀';
         }
 
+        /* 👤 ฟังก์ชันใหม่: เปิดแถบควบคุมและโฟกัสที่กล่อง Login ทันที */
+        function openLoginPanel() {
+            const panel = document.getElementById('control-panel');
+            if (panel.classList.contains('collapsed')) {
+                toggleMainPanel();
+            }
+            const inputField = document.getElementById('username-input');
+            if (inputField && document.getElementById('auth-section').style.display !== 'none') {
+                inputField.focus();
+            }
+        }
+
         function startGameSession() {
             if (gameMode === 'online') {
                 if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งก่อนครับ!"); return; }
@@ -528,12 +574,11 @@
                 [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
             ];
             currentTurn = 1; selectedPiece = null; isGameOver = false;
-            document.getElementById('game-over-modal').style.display = 'none'; // ซ่อนหน้าต่างจบเกมเมื่อเริ่มใหม่
+            document.getElementById('game-over-modal').style.display = 'none';
             updateUI(false); drawPieces();
         }
 
         function restartFromModal() {
-            // ฟังก์ชันเฉพาะสำหรับปุ่มในหน้าต่างจบเกม เผื่อเพิ่มระบบส่งสัญญานเริ่มใหม่ไปหาเพื่อนทางออนไลน์ได้ง่ายขึ้น
             if (gameMode === 'online') {
                 socket.emit('challengePlayer', { target: selectedFriend, challenger: localStorage.getItem('checkers_username') });
             }
@@ -591,7 +636,7 @@
             isGameOver = true;
             document.getElementById('turn-display').innerText = `🏆 ฝ่าย${winnerName} ชนะ!`;
             document.getElementById('winner-text').innerText = `ฝ่าย${winnerName} ชนะ!`;
-            document.getElementById('game-over-modal').style.display = 'flex'; // แสดง Pop-up พร้อมปุ่มเริ่มใหม่
+            document.getElementById('game-over-modal').style.display = 'flex';
             drawPieces();
         }
 
@@ -635,6 +680,7 @@
                 if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'white') return;
             }
             if (event.clientX < 360 && !document.getElementById('control-panel').classList.contains('collapsed')) return;
+            if (event.clientY > window.innerHeight - 80 && event.clientX > window.innerWidth/2 - 120 && event.clientX < window.innerWidth/2 + 120) return; // ไม่ให้คลิกโดนกระดานด้านหลังปุ่มทางลัด
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
@@ -667,6 +713,7 @@
                 document.getElementById('auth-section').style.display = 'none';
                 document.getElementById('profile-section').style.display = 'block';
                 document.getElementById('user-display').innerText = savedName;
+                document.getElementById('login-shortcut-btn').innerText = `👤 โปรไฟล์: ${savedName}`;
                 socket.emit('registerPlayer', savedName);
             }
         }
