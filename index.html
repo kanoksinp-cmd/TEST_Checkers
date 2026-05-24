@@ -57,17 +57,16 @@
             }
         }
 
-        /* ปรับสี UI ตาเดินให้สว่างขึ้น */
         .turn-red {
-            background: linear-gradient(135deg, #ff4d4d, #ff0000);
+            background: linear-gradient(135deg, #d63031, #8e0000);
             color: #ffffff;
-            border: 2px solid #ff9999;
+            border: 2px solid #ff7675;
         }
 
-        .turn-blue {
-            background: linear-gradient(135deg, #00d2ff, #0072ff);
+        .turn-green {
+            background: linear-gradient(135deg, #2ecc71, #1b5e20);
             color: #ffffff;
-            border: 2px solid #80e5ff;
+            border: 2px solid #2ecc71;
         }
 
         #combo-timer-display {
@@ -358,7 +357,6 @@
             z-index: 5;
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            border: 1px solid transparent;
         }
         #nametag-top {
             top: 85px;
@@ -384,8 +382,8 @@
     <div id="nametag-bottom" class="side-nametag">ตัวคุณ</div>
 
     <div id="zoom-controls">
-        <div class="zoom-btn" onclick="zoomGame(-1.5)" title="ซูมเข้า">＋</div>
-        <div class="zoom-btn" onclick="zoomGame(1.5)" title="ซูมออก">－</div>
+        <div class="zoom-btn" onclick="zoomGame(-1.5)" title="ซูมเข้าอย่างมาก">＋</div>
+        <div class="zoom-btn" onclick="zoomGame(1.5)" title="ซูมออกอย่างมาก">－</div>
     </div>
 
     <button id="login-shortcut-btn" onclick="openLoginPanel()">👤 จัดการโปรไฟล์ / เข้าสู่ระบบ</button>
@@ -457,17 +455,10 @@
         const ZOOM_MAX = 28.0; 
         let currentZoomLevel = 0; 
 
-        let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
-        let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = 'red'; 
-
-        let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
-        let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
-
         function adjustCameraForDevice() {
             const aspect = window.innerWidth / window.innerHeight;
-            
             let zDirectionMultiplier = 1.0;
-            if (typeof gameMode !== 'undefined' && gameMode === 'online' && typeof myRole !== 'undefined' && myRole === 'blue') {
+            if (gameMode === 'online' && myRole === 'green') {
                 zDirectionMultiplier = -1.0; 
             }
 
@@ -480,7 +471,7 @@
             }
             
             const dir = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).normalize();
-            const baseLength = 12.0; 
+            const baseLength = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).length();
             let targetLength = baseLength + currentZoomLevel;
             
             if (targetLength < ZOOM_MIN) { targetLength = ZOOM_MIN; currentZoomLevel = ZOOM_MIN - baseLength; }
@@ -490,7 +481,6 @@
             camera.position.set(dir.x, dir.y, dir.z);
             camera.lookAt(0, -0.6, 0);
         }
-        
         adjustCameraForDevice();
 
         function zoomGame(amount) {
@@ -515,24 +505,45 @@
             [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
         ];
 
-        const socket = io({ transports: ['websocket'], upgrade: false }); 
+        let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
+        let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = 'red'; 
+
+        let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
+        let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
+
+        //  [แก้ไขจุดบกพร่อง] ดักจับกรณีที่โหลดไฟล์ socket.io.js จากเซิร์ฟเวอร์ไม่ได้ เพื่อไม่ให้สคริปต์ด้านล่างทั้งหมดหยุดทำงาน
+        let socket = null;
+        if (typeof io !== 'undefined') {
+            socket = io({ transports: ['websocket'], upgrade: false }); 
+        } else {
+            console.warn("⚠️ คาดว่า Server ออฟไลน์อยู่: ไม่สามารถเชื่อมต่อระบบผู้เล่นออนไลน์ได้ในขณะนี้");
+            setTimeout(() => {
+                const statusEl = document.getElementById('server-status');
+                if(statusEl) {
+                    statusEl.innerText = '⚠️ ทำงานในโหมด Offline (เล่นกับ AI / Local)';
+                    statusEl.style.color = '#f1c40f';
+                }
+            }, 1000);
+        }
+        
         let onlineFriendsList = []; 
 
-        socket.on('connect', () => {
-            document.getElementById('server-status').innerText = '🟢 เชื่อมต่อเซิร์ฟเวอร์สำเร็จแล้ว';
-            document.getElementById('server-status').style.color = '#00ffcc';
-            checkSavedPlayer(); 
-        });
+        if (socket) {
+            socket.on('connect', () => {
+                document.getElementById('server-status').innerText = '🟢 เชื่อมต่อเซิร์ฟเวอร์สำเร็จแล้ว';
+                document.getElementById('server-status').style.color = '#00ffcc';
+                checkSavedPlayer(); 
+            });
 
-        socket.on('disconnect', () => {
-            document.getElementById('server-status').innerText = '🔴 ขาดการเชื่อมต่อ';
-            document.getElementById('server-status').style.color = '#ff4d4d';
-        });
+            socket.on('disconnect', () => {
+                document.getElementById('server-status').innerText = '🔴 ขาดการเชื่อมต่อ';
+                document.getElementById('server-status').style.color = '#ff4d4d';
+            });
+        }
 
-        /* [อัปเดตเฉดสี 3D ใหม่] */
         const PIECE_MATERIALS = {
-            red: { color: 0xff1e1e, roughness: 0.15, metalness: 0.3, emissive: 0x3a0000 },   // แดงสว่างสดใสขึ้น
-            blue: { color: 0x00d2ff, roughness: 0.15, metalness: 0.4, emissive: 0x002b3d }   // เปลี่ยนจากเขียวเป็นฟ้าสว่าง (Cyan neon)
+            red: { color: 0xb71c1c, roughness: 0.2, metalness: 0.5, emissive: 0x000000 },
+            green: { color: 0x1b5e20, roughness: 0.2, metalness: 0.4, emissive: 0x000000 }
         };
 
         const BOARD_SKIN = { dark: 0x2c3e50, light: 0xecf0f1, roughness: 0.6, metalness: 0.1 };
@@ -563,7 +574,7 @@
                         let pieceMesh;
                         const isRed = (val === 1 || val === 3);
                         const isKing = (val === 3 || val === 4);
-                        const matConfig = isRed ? PIECE_MATERIALS.red : PIECE_MATERIALS.blue;
+                        const matConfig = isRed ? PIECE_MATERIALS.red : PIECE_MATERIALS.green;
                         const mat = new THREE.MeshStandardMaterial(matConfig);
 
                         if (!isKing) {
@@ -593,7 +604,7 @@
 
                             const gemGeo = new THREE.SphereGeometry(0.05, 8, 8);
                             const gemMat = new THREE.MeshStandardMaterial({
-                                color: isRed ? 0xffea00 : 0xffffff, roughness: 0.1, metalness: 0.9, emissive: isRed ? 0x4a3b00 : 0x3a3a3a
+                                color: isRed ? 0xf1c40f : 0x2ecc71, roughness: 0.2, metalness: 0.9, emissive: isRed ? 0x5c4300 : 0x0f3d14
                             });
                             const gem = new THREE.Mesh(gemGeo, gemMat);
                             gem.position.y = 0.38;
@@ -608,33 +619,32 @@
             }
         }
 
-        /* [อัปเดตแท็กข้อความข้างกระดาน] */
         function updateNametags() {
             const topTag = document.getElementById('nametag-top');
             const bottomTag = document.getElementById('nametag-bottom');
             let myName = localStorage.getItem('checkers_username') || "คุณ";
 
             if (gameMode === 'bot') {
-                topTag.innerText = `ฝั่งสีฟ้า: บอท AI (${aiDifficulty.toUpperCase()})`;
-                topTag.style.borderColor = "#00d2ff";
+                topTag.innerText = `ฝั่งสีเขียว: บอท AI (${aiDifficulty.toUpperCase()})`;
+                topTag.style.borderColor = "#2ecc71";
                 bottomTag.innerText = `ฝั่งสีแดง: ${myName}`;
-                bottomTag.style.borderColor = "#ff1e1e";
+                bottomTag.style.borderColor = "#d63031";
             } else if (gameMode === 'local') {
-                topTag.innerText = `ฝั่งสีฟ้า: ผู้เล่นคนที่ 2`;
-                topTag.style.borderColor = "#00d2ff";
+                topTag.innerText = `ฝั่งสีเขียว: ผู้เล่นคนที่ 2`;
+                topTag.style.borderColor = "#2ecc71";
                 bottomTag.innerText = `ฝั่งสีแดง: ผู้เล่นคนที่ 1`;
-                bottomTag.style.borderColor = "#ff1e1e";
+                bottomTag.style.borderColor = "#d63031";
             } else if (gameMode === 'online') {
                 if (myRole === 'red') {
-                    topTag.innerText = `ฝั่งสีฟ้า: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
-                    topTag.style.borderColor = "#00d2ff";
+                    topTag.innerText = `ฝั่งสีเขียว: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
+                    topTag.style.borderColor = "#2ecc71";
                     bottomTag.innerText = `ฝั่งสีแดง: ${myName} (คุณ)`;
-                    bottomTag.style.borderColor = "#ff1e1e";
+                    bottomTag.style.borderColor = "#d63031";
                 } else {
                     topTag.innerText = `ฝั่งสีแดง: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
-                    topTag.style.borderColor = "#ff1e1e";
-                    bottomTag.innerText = `ฝั่งสีฟ้า: ${myName} (คุณ)`;
-                    bottomTag.style.borderColor = "#00d2ff";
+                    topTag.style.borderColor = "#d63031";
+                    bottomTag.innerText = `ฝั่งสีเขียว: ${myName} (คุณ)`;
+                    bottomTag.style.borderColor = "#2ecc71";
                 }
             }
         }
@@ -642,11 +652,11 @@
         function updateTitleText() {
             const titleEl = document.getElementById('h2h-title');
             if (gameMode === 'online') {
-                titleEl.innerText = myRole === 'red' ? `🔴 คุณ VS 🔵 ${selectedFriend || 'คู่แข่ง'}` : `🔵 คุณ VS 🔴 ${selectedFriend || 'คู่แข่ง'}`;
+                titleEl.innerText = myRole === 'red' ? `🔴 คุณ VS 🟢 ${selectedFriend || 'คู่แข่ง'}` : `🟢 คุณ VS 🔴 ${selectedFriend || 'คู่แข่ง'}`;
             } else if (gameMode === 'local') {
-                titleEl.innerText = "🔴 แดง VS 🔵 ฟ้า";
+                titleEl.innerText = "🔴 แดง VS 🟢 เขียว";
             } else {
-                titleEl.innerText = myRole === 'red' ? "🔴 คุณ VS 🔵 บอท AI" : "🔵 คุณ VS 🔴 บอท AI";
+                titleEl.innerText = myRole === 'red' ? "🔴 คุณ VS 🟢 บอท AI" : "🟢 คุณ VS 🔴 บอท AI";
             }
             updateNametags();
         }
@@ -662,7 +672,7 @@
                 if (player.username && player.username !== mySavedName) {
                     const option = document.createElement('option');
                     option.value = player.username;
-                    option.innerText = `🔵 ${player.username}`;
+                    option.innerText = `🟢 ${player.username}`;
                     selectBox.appendChild(option);
                     counter++;
                 }
@@ -676,6 +686,12 @@
             const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
             
             if (mode === 'online') {
+                if(!socket) {
+                    alert("❌ ไม่สามารถเล่นโหมดออนไลน์ได้เนื่องจากเซิร์ฟเวอร์ไม่ได้เปิดใช้งานหรือเชื่อมต่อไม่ได้");
+                    document.getElementById('game-mode-select').value = 'bot';
+                    gameMode = 'bot';
+                    return;
+                }
                 friendSection.style.display = 'block'; 
                 aiDifficultyContainer.style.display = 'none'; 
                 renderOnlineFriends();
@@ -688,7 +704,7 @@
                 aiDifficultyContainer.style.display = 'block'; 
                 myRole = 'red';
             }
-            adjustCameraForDevice(); 
+            adjustCameraForDevice();
             updateTitleText();
             resetGame();
         }
@@ -700,19 +716,20 @@
 
         function startGameSession() {
             if (gameMode === 'online') {
+                if (!socket) return;
                 if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งที่จะท้าดวลก่อนครับ!"); return; }
-                const assignedColor = Math.random() < 0.5 ? 'red' : 'blue';
+                const assignedColor = Math.random() < 0.5 ? 'red' : 'green';
                 myRole = assignedColor;
                 
-                adjustCameraForDevice(); 
+                adjustCameraForDevice();
                 updateTitleText();
                 
                 socket.emit('challengePlayer', { 
                     target: selectedFriend, 
                     challenger: localStorage.getItem('checkers_username'),
-                    challengerColor: assignedColor === 'red' ? 'red' : 'green'
+                    challengerColor: assignedColor === 'red' ? 'red' : 'blue'
                 });
-                alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🔵 สีฟ้า'} กำลังรอการตอบรับ...`);
+                alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🟢 สีเขียว'} กำลังรอการตอบรับ...`);
             }
             resetGame(); toggleMainPanel();
         }
@@ -728,10 +745,10 @@
             jumpCount = 0; comboPiece = null; stopComboTimer();
             document.getElementById('game-over-modal').style.display = 'none';
             
-            adjustCameraForDevice(); 
+            adjustCameraForDevice();
             updateUI(false); drawPieces(); updateNametags();
             
-            if (gameMode === 'bot' && myRole === 'blue') {
+            if (gameMode === 'bot' && myRole === 'green') {
                 triggerBotAiIfNeeded();
             }
         }
@@ -813,7 +830,7 @@
         function executeMove(sR, sC, eR, eC, result, shouldBroadcast = true) {
             let pType = boardState[sR][sC]; boardState[eR][eC] = pType; boardState[sR][sC] = 0;
 
-            if (gameMode === 'online' && shouldBroadcast) {
+            if (gameMode === 'online' && socket && shouldBroadcast) {
                 socket.emit('movePiece', { target: selectedFriend, sR: sR, sC: sC, eR: eR, eC: eC, result: result });
             }
             if (result.type === 'jump') {
@@ -831,7 +848,7 @@
                 comboPiece = { row: eR, col: eC }; selectedPiece = comboPiece;
                 updateUI(true); drawPieces();
 
-                const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red')));
+                const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'green') || (currentTurn === 2 && myRole === 'red')));
                 if (isBotTurn) {
                     setTimeout(() => executeBotComboMove(eR, eC), 600);
                 } else {
@@ -867,12 +884,12 @@
         }
 
         function endTurnProcess() {
-            let rPieces = 0, bPieces = 0;
+            let rPieces = 0, gPieces = 0;
             for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) bPieces++; }
+                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) gPieces++; }
             }
-            if (rPieces === 0) { triggerGameOver("สีฟ้า"); return; }
-            if (bPieces === 0) { triggerGameOver("สีแดง"); return; }
+            if (rPieces === 0) { triggerGameOver("สีเขียว"); return; }
+            if (gPieces === 0) { triggerGameOver("สีแดง"); return; }
 
             currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
             updateUI(false); drawPieces(); triggerBotAiIfNeeded();
@@ -881,7 +898,7 @@
         function triggerBotAiIfNeeded() {
             if (gameMode !== 'bot' || isGameOver) return;
 
-            const isBotActive = (currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red');
+            const isBotActive = (currentTurn === 1 && myRole === 'green') || (currentTurn === 2 && myRole === 'red');
             if (!isBotActive) return;
 
             setTimeout(() => {
@@ -928,10 +945,10 @@
         function handleInteraction(clientX, clientY) {
             if (isGameOver) return;
             if (gameMode === 'online') {
-                if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'blue') return;
+                if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'green') return;
             }
             if (gameMode === 'bot') {
-                if (currentTurn === 1 && myRole === 'blue') return;
+                if (currentTurn === 1 && myRole === 'green') return;
                 if (currentTurn === 2 && myRole === 'red') return;
             }
             
@@ -1004,8 +1021,8 @@
 
         function updateUI(hasSelected) {
             const el = document.getElementById('turn-display');
-            let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีฟ้า";
-            el.className = currentTurn === 1 ? "turn-red" : "turn-blue";
+            let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีเขียว";
+            el.className = currentTurn === 1 ? "turn-red" : "turn-green";
             if (comboPiece) {
                 el.innerText = `💥 ${name} กำลังทำคอมโบกินต่อเนื่อง!`;
             } else {
@@ -1015,7 +1032,7 @@
 
         function checkSavedPlayer() {
             const savedName = localStorage.getItem('checkers_username');
-            if (savedName && socket.connected) {
+            if (savedName && socket && socket.connected) {
                 document.getElementById('auth-section').style.display = 'none';
                 document.getElementById('profile-section').style.display = 'block';
                 document.getElementById('user-display').innerText = savedName;
@@ -1028,39 +1045,40 @@
         function registerPlayer() { const username = document.getElementById('username-input').value.trim(); if (!username) return; localStorage.setItem('checkers_username', username); window.location.reload(); }
         function logoutPlayer() { localStorage.removeItem('checkers_username'); window.location.reload(); }
 
-        socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
-        socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
-        socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
-        
-        socket.on('incomingChallenge', (data) => {
-            if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับคำท้าหรือไม่?`)) {
-                gameMode = 'online'; 
-                selectedFriend = data.challenger;
-                myRole = (data.challengerColor === 'red') ? 'blue' : 'red'; 
-                
-                document.getElementById('game-mode-select').value = 'online'; 
-                changeGameMode('online'); 
-                selectOnlineFriend(data.challenger);
-                
-                socket.emit('acceptChallenge', { 
-                    target: data.challenger, 
-                    responder: localStorage.getItem('checkers_username'),
-                    responderColor: data.challengerColor === 'red' ? 'blue' : 'red'
-                });
-                
-                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🔵 สีฟ้า'}] กล้องจะปรับมุมมองให้โดยอัตโนมัติ`);
-                resetGame(); 
-                if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
-            }
-        });
+        if (socket) {
+            socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+            socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+            socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
+            
+            socket.on('incomingChallenge', (data) => {
+                if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับคำท้าหรือไม่?`)) {
+                    gameMode = 'online'; 
+                    selectedFriend = data.challenger;
+                    myRole = (data.challengerColor === 'red') ? 'green' : 'red'; 
+                    
+                    document.getElementById('game-mode-select').value = 'online'; 
+                    changeGameMode('online'); 
+                    selectOnlineFriend(data.challenger);
+                    
+                    socket.emit('acceptChallenge', { 
+                        target: data.challenger, 
+                        responder: localStorage.getItem('checkers_username'),
+                        responderColor: data.challengerColor === 'red' ? 'blue' : 'red'
+                    });
+                    
+                    alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🟢 สีเขียว'}] กล้องจะปรับมุมมองให้โดยอัตโนมัติ`);
+                    resetGame(); 
+                    if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
+                }
+            });
 
-        socket.on('challengeAccepted', (data) => { 
-            alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
-            myRole = (data.responderColor === 'red') ? 'blue' : 'red';
-            adjustCameraForDevice();
-            updateTitleText(); 
-            resetGame(); 
-        });
+            socket.on('challengeAccepted', (data) => { 
+                alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
+                adjustCameraForDevice();
+                updateTitleText(); 
+                resetGame(); 
+            });
+        }
 
         window.addEventListener('resize', () => { 
             camera.aspect = window.innerWidth / window.innerHeight; 
