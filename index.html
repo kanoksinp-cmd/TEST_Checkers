@@ -362,12 +362,10 @@
         #nametag-top {
             top: 85px;
             background: rgba(30, 30, 30, 0.85);
-            border: 1px solid #2ecc71;
         }
         #nametag-bottom {
             bottom: 85px;
             background: rgba(30, 30, 30, 0.85);
-            border: 1px solid #d63031;
         }
     </style>
 
@@ -382,8 +380,8 @@
     </div>
 
     <!-- ป้ายชื่อบอกทั้งสองฝั่งบน-ล่าง -->
-    <div id="nametag-top" class="side-nametag">ฝั่งสีเขียว: บอท AI</div>
-    <div id="nametag-bottom" class="side-nametag">ฝั่งสีแดง: คุณ</div>
+    <div id="nametag-top" class="side-nametag">ฝั่งตรงข้าม</div>
+    <div id="nametag-bottom" class="side-nametag">ตัวคุณ</div>
 
     <div id="zoom-controls">
         <div class="zoom-btn" onclick="zoomGame(-1.5)" title="ซูมเข้าอย่างมาก">＋</div>
@@ -455,19 +453,26 @@
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         
-        // ขยายพื้นที่การปรับขนาดซูมกระดานให้กว้างขวางเป็นพิเศษ (มากกว่าเดิม 2 เท่า)
         const ZOOM_MIN = 2.0; 
         const ZOOM_MAX = 28.0; 
         let currentZoomLevel = 0; 
 
+        // [อัปเดตหลัก] ฟังก์ชันคำนวณตำแหน่งกล้องแบบพลิกด้านตามสีของฝั่งผู้เล่นใช้งานจริง
         function adjustCameraForDevice() {
             const aspect = window.innerWidth / window.innerHeight;
-            let baseParams = { x: 0, y: 8.5, z: 8.5 };
+            
+            // ตั้งค่าแกน Z พื้นฐาน (ถ้าเราได้สีเขียวในโหมดออนไลน์ กล้องจะติดลบ เพื่อหมุนไปมองจากด้านบนลงล่าง)
+            let zDirectionMultiplier = 1.0;
+            if (gameMode === 'online' && myRole === 'green') {
+                zDirectionMultiplier = -1.0; 
+            }
+
+            let baseParams = { x: 0, y: 8.5, z: 8.5 * zDirectionMultiplier };
 
             if (aspect < 1) { 
-                baseParams = { x: 0, y: 11.5, z: 8.0 };
+                baseParams = { x: 0, y: 11.5, z: 8.0 * zDirectionMultiplier };
             } else if (aspect < 1.3) { 
-                baseParams = { x: 0, y: 9.5, z: 8.5 };
+                baseParams = { x: 0, y: 9.5, z: 8.5 * zDirectionMultiplier };
             }
             
             const dir = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).normalize();
@@ -525,7 +530,6 @@
             document.getElementById('server-status').style.color = '#ff4d4d';
         });
 
-        // อัปเดตโครงสร้างวัสดุพื้นผิวหมากฝั่งศัตรูเป็น สีเขียว (Green)
         const PIECE_MATERIALS = {
             red: { color: 0xb71c1c, roughness: 0.2, metalness: 0.5, emissive: 0x000000 },
             green: { color: 0x1b5e20, roughness: 0.2, metalness: 0.4, emissive: 0x000000 }
@@ -604,7 +608,7 @@
             }
         }
 
-        // ฟังก์ชันคำนวณและเปลี่ยนข้อความป้ายชื่อทั้งสองฝั่งให้ตรงสถานะเกม
+        // [อัปเดตหลัก] ฟังก์ชันป้ายชื่อจะสลับตำแหน่งและขอบสีตามมุมมองกล้องของฝั่งนั้น ๆ โดยอัตโนมัติ
         function updateNametags() {
             const topTag = document.getElementById('nametag-top');
             const bottomTag = document.getElementById('nametag-bottom');
@@ -612,17 +616,27 @@
 
             if (gameMode === 'bot') {
                 topTag.innerText = `ฝั่งสีเขียว: บอท AI (${aiDifficulty.toUpperCase()})`;
+                topTag.style.borderColor = "#2ecc71";
                 bottomTag.innerText = `ฝั่งสีแดง: ${myName}`;
+                bottomTag.style.borderColor = "#d63031";
             } else if (gameMode === 'local') {
                 topTag.innerText = `ฝั่งสีเขียว: ผู้เล่นคนที่ 2`;
+                topTag.style.borderColor = "#2ecc71";
                 bottomTag.innerText = `ฝั่งสีแดง: ผู้เล่นคนที่ 1`;
+                bottomTag.style.borderColor = "#d63031";
             } else if (gameMode === 'online') {
                 if (myRole === 'red') {
+                    // มุมมองปกติ: คู่แข่ง(เขียว)อยู่ข้างบน ตัวเรา(แดง)อยู่ข้างล่าง
                     topTag.innerText = `ฝั่งสีเขียว: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
+                    topTag.style.borderColor = "#2ecc71";
                     bottomTag.innerText = `ฝั่งสีแดง: ${myName} (คุณ)`;
+                    bottomTag.style.borderColor = "#d63031";
                 } else {
-                    topTag.innerText = `ฝั่งสีเขียว: ${myName} (คุณ)`;
-                    bottomTag.innerText = `ฝั่งสีแดง: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
+                    // มุมมองกลับด้าน: คู่แข่ง(แดง)อยู่ข้างบน ตัวเรา(เขียว)อยู่ข้างล่าง
+                    topTag.innerText = `ฝั่งสีแดง: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
+                    topTag.style.borderColor = "#d63031";
+                    bottomTag.innerText = `ฝั่งสีเขียว: ${myName} (คุณ)`;
+                    bottomTag.style.borderColor = "#2ecc71";
                 }
             }
         }
@@ -676,6 +690,7 @@
                 aiDifficultyContainer.style.display = 'block'; 
                 myRole = 'red';
             }
+            adjustCameraForDevice(); // อัปเดตมุมมองกล้องทันทีเมื่อเปลี่ยนโหมด
             updateTitleText();
             resetGame();
         }
@@ -691,11 +706,13 @@
                 const assignedColor = Math.random() < 0.5 ? 'red' : 'green';
                 myRole = assignedColor;
                 
+                adjustCameraForDevice(); // [อัปเดตมุมมอง] ปรับทิศทางกล้องของฝั่งท้าทายเกม
                 updateTitleText();
+                
                 socket.emit('challengePlayer', { 
                     target: selectedFriend, 
                     challenger: localStorage.getItem('checkers_username'),
-                    challengerColor: assignedColor === 'red' ? 'red' : 'blue' // ฝั่ง Backend มองเขียวเป็น blue
+                    challengerColor: assignedColor === 'red' ? 'red' : 'blue'
                 });
                 alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🟢 สีเขียว'} กำลังรอการตอบรับ...`);
             }
@@ -712,6 +729,8 @@
             currentTurn = 1; selectedPiece = null; isGameOver = false;
             jumpCount = 0; comboPiece = null; stopComboTimer();
             document.getElementById('game-over-modal').style.display = 'none';
+            
+            adjustCameraForDevice(); // มั่นใจว่ารีเซ็ตแล้วมุมมองถูกต้อง
             updateUI(false); drawPieces(); updateNametags();
             
             if (gameMode === 'bot' && myRole === 'green') {
@@ -1031,14 +1050,16 @@
                     responderColor: data.challengerColor === 'red' ? 'blue' : 'red'
                 });
                 
-                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🟢 สีเขียว'}]`);
+                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🟢 สีเขียว'}] กล้องจะปรับมุมมองให้โดยอัตโนมัติ`);
                 resetGame(); 
                 if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
             }
         });
 
+        // [อัปเดตหลัก] เมื่อฝั่งที่เราส่งคำท้ากดยอมรับ ระบบจะอัปเดตทิศทางกล้องให้มองจากท้ายกระดานฝั่งเราทันที
         socket.on('challengeAccepted', (data) => { 
             alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
+            adjustCameraForDevice();
             updateTitleText(); 
             resetGame(); 
         });
