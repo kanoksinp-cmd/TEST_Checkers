@@ -12,18 +12,18 @@ const io = new Server(server, {
   }
 });
 
-// Serve static files from the 'public' directory
+// ส่งไฟล์สแตติก (HTML, CSS, JS) จากโฟลเดอร์ 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fallback to serve index.html for any other request
+// Fallback ส่งไฟล์ index.html สำหรับคำขออื่น ๆ ทั้งหมด
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Map to track connected players: socketId -> username
+// Map สำหรับติดตามผู้เล่นที่ออนไลน์: socketId -> username
 const activePlayers = new Map();
 
-// Helper function to get socket ID by username
+// ฟังก์ชันช่วยค้นหา Socket ID จากชื่อผู้เล่น
 function getSocketIdByUsername(username) {
   for (const [id, name] of activePlayers.entries()) {
     if (name.toLowerCase() === username.toLowerCase()) {
@@ -33,26 +33,27 @@ function getSocketIdByUsername(username) {
   return null;
 }
 
-// Helper to broadcast current online players to all connected sockets
+// ฟังก์ชันประกาศรายชื่อผู้เล่นออนไลน์ทั้งหมดให้ทุกคนทราบ
 function broadcastOnlinePlayers() {
   const playersList = [];
   activePlayers.forEach((username) => {
     playersList.push({ username });
   });
 
-  // Emitting both event names to ensure client compatibility
-  io.emit('playerDisconnected', { username });
+  // ส่งเหตุการณ์ไปยัง Client ทุกคนเพื่ออัปเดตรายชื่อ
+  io.emit('online-users', playersList);
+  io.emit('updatePlayers', playersList);
   console.log(`[Server] Current online players:`, playersList.map(p => p.username));
 }
 
 io.on('connection', (socket) => {
   console.log(`[Server] Socket connected: ${socket.id}`);
 
-  // Register player username
+  // 1. ลงทะเบียนชื่อผู้เล่น
   socket.on('registerPlayer', (username) => {
     if (!username) return;
     
-    // Check if username is already in use by another socket
+    // ตรวจสอบกรณีชื่อซ้ำซ้อน
     const existingSocketId = getSocketIdByUsername(username);
     if (existingSocketId && existingSocketId !== socket.id) {
       console.log(`[Server] Username collision: '${username}' already registered. Overwriting with new connection.`);
@@ -62,11 +63,11 @@ io.on('connection', (socket) => {
     activePlayers.set(socket.id, username);
     console.log(`[Server] Registered: '${username}' for socket ${socket.id}`);
     
-    // Broadcast updated player list
+    // ประกาศรายชื่อใหม่
     broadcastOnlinePlayers();
   });
 
-  // Challenge another player
+  // 2. ส่งคำท้าผู้เล่นคนอื่น
   socket.on('challengePlayer', (data) => {
     const { target, challenger, challengerColor } = data;
     console.log(`[Server] Challenge: '${challenger}' challenged '${target}' as color: ${challengerColor}`);
@@ -83,7 +84,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Accept a challenge
+  // 3. ตอบรับคำท้าดวล
   socket.on('acceptChallenge', (data) => {
     const { target, responder, responderColor } = data;
     console.log(`[Server] Challenge Accepted: '${responder}' accepted challenge from '${target}' as color: ${responderColor}`);
@@ -97,18 +98,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Relay piece moves between opposing players
+  // 4. ส่งผ่านข้อมูลการเดินหมากระหว่างคู่ต่อสู้
   socket.on('movePiece', (data) => {
     const { target, sR, sC, eR, eC, result } = data;
     
     const targetSocketId = getSocketIdByUsername(target);
     if (targetSocketId) {
       io.to(targetSocketId).emit('pieceMoved', {
-        sR,
-        sC,
-        eR,
-        eC,
-        result
+        sR, sC, eR, eC, result
       });
       console.log(`[Server] Move relayed from ${activePlayers.get(socket.id)} to ${target}: (${sR},${sC}) -> (${eR},${eC})`);
     } else {
@@ -116,14 +113,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Clean up on disconnect
+  // 5. จัดการเมื่อผู้เล่นหลุดหรือตัดการเชื่อมต่อ
   socket.on('disconnect', () => {
     const username = activePlayers.get(socket.id);
     if (username) {
       console.log(`[Server] Socket disconnected: ${socket.id} (username: '${username}')`);
       activePlayers.delete(socket.id);
       
-      // Notify remaining players about offline status
+      // แจ้งให้ผู้เล่นอื่นทราบว่าผู้เล่นนี้ออฟไลน์แล้ว
       io.emit('playerDisconnected', { username });
       broadcastOnlinePlayers();
     } else {
