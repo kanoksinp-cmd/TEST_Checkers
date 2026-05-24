@@ -1,21 +1,16 @@
 {
-  "name": "thai-checkers-3d-server",
+  "name": "thai-checkers-3d-online",
   "version": "1.0.0",
-  "description": "เซิร์ฟเวอร์ระบบออนไลน์เกมหมากฮอสไทย 3D แบบ Single Page HTML",
+  "description": "เกมหมากฮอสไทย 3 มิติออนไลน์แบบเรียลไทม์",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [
-    "threejs",
-    "socket.io",
-    "checkers"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
