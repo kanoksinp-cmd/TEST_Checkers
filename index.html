@@ -418,13 +418,11 @@
             document.getElementById('server-status').style.color = '#ff4d4d';
         });
 
-        // ฟิกซ์สีและพื้นผิวเป็นแบบพรีเมียม (แดง-น้ำเงิน)
         const PIECE_MATERIALS = {
             red: { color: 0xb71c1c, roughness: 0.2, metalness: 0.5, emissive: 0x000000 },
             blue: { color: 0x0f4c81, roughness: 0.2, metalness: 0.5, emissive: 0x000000 }
         };
 
-        // สกินกระดานไม้คลาสสิกคงเดิม
         const BOARD_SKIN = { dark: 0x2c3e50, light: 0xecf0f1, roughness: 0.6, metalness: 0.1 };
 
         for (let r = 0; r < BOARD_SIZE; r++) {
@@ -544,7 +542,7 @@
             } else {
                 friendSection.style.display = 'none'; 
                 aiDifficultyContainer.style.display = 'block'; 
-                myRole = 'red'; // บอทให้ผู้เล่นเริ่มเป็นสีแดงก่อนเสมอเป็นค่าเริ่มต้น
+                myRole = 'red';
             }
             updateTitleText();
             resetGame();
@@ -558,8 +556,6 @@
         function startGameSession() {
             if (gameMode === 'online') {
                 if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งที่จะท้าดวลก่อนครับ!"); return; }
-                
-                // 🎲 ระบบสุ่มสีอัตโนมัติฝั่งผู้ส่งคำท้า (50/50ระหว่างแดงกับน้ำเงิน)
                 const assignedColor = Math.random() < 0.5 ? 'red' : 'blue';
                 myRole = assignedColor;
                 
@@ -678,10 +674,13 @@
                 jumpCount = 0;
             }
 
-            if (pType === 1 && eR === 0) boardState[eR][eC] = 3;
-            if (pType === 2 && eR === 7) boardState[eR][eC] = 4;
+            // ระบบเช็กการเลื่อนขั้นขึ้นเป็นคิง (King Promotion)
+            let justPromoted = false;
+            if (pType === 1 && eR === 0) { boardState[eR][eC] = 3; justPromoted = true; }
+            if (pType === 2 && eR === 7) { boardState[eR][eC] = 4; justPromoted = true; }
 
-            if (result.type === 'jump' && jumpCount < 3 && hasMoreJumps(eR, eC)) {
+            // กฎหมากฮอสไทย: ถ้าเพิ่งเข้าคิงในจังหวะกินนั้น (!justPromoted) จะต้องหยุดกินต่อทันที
+            if (result.type === 'jump' && jumpCount < 3 && !justPromoted && hasMoreJumps(eR, eC)) {
                 comboPiece = { row: eR, col: eC }; selectedPiece = comboPiece;
                 updateUI(true); drawPieces();
 
@@ -845,13 +844,10 @@
         socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
         socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
         
-        // ⚔️ เมื่อมีคำท้าดวลเข้ามาหาเรา
         socket.on('incomingChallenge', (data) => {
             if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับคำท้าหรือไม่?`)) {
                 gameMode = 'online'; 
                 selectedFriend = data.challenger;
-                
-                // 🤖 ระบบเลือกสีให้อัตโนมัติ: ตัวเราจะได้สีตรงข้ามกับผู้ส่งคำท้าเสมอ (แดง <-> น้ำเงิน)
                 myRole = (data.challengerColor === 'red') ? 'blue' : 'red';
                 
                 document.getElementById('game-mode-select').value = 'online'; 
@@ -870,7 +866,6 @@
             }
         });
 
-        // 🎉 เมื่อฝ่ายนู้นยอมรับคำท้าดวลของเราแล้ว
         socket.on('challengeAccepted', (data) => { 
             alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
             updateTitleText(); 
