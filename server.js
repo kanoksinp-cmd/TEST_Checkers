@@ -4,8 +4,8 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-// เสิร์ฟไฟล์จากโฟลเดอร์ปัจจุบัน (ที่เก็บ index.html ไว้)
-app.use(express.static(__dirname));
+// แก้ไขตรงนี้: ชี้ไปที่โฟลเดอร์ /src ที่คุณเก็บ index.html ไว้
+app.use(express.static(path.join(__dirname, 'src')));
 
 io.on('connection', (socket) => {
     console.log('a user connected');
