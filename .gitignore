@@ -1,26 +1,6 @@
-# Dependency directories (โฟลเดอร์สำหรับเก็บ Library หากในอนาคตใช้ npm)
 node_modules/
-jspm_packages/
-web_modules/
-
-# Logs (ไฟล์บันทึกประวัติการทำงานของระบบเวลาเกิดข้อผิดพลาด)
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Operating System Files (ไฟล์จำพวก Cache ของระบบปฏิบัติการ)
+.env
 .DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# IDEs and Editors (โฟลเดอร์การตั้งค่าส่วนตัวของโปรแกรมเขียนโค้ด)
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.swp
+dist/
+build/
+*.log
