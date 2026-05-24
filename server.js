@@ -43,6 +43,7 @@ function broadcastOnlinePlayers() {
   // Emitting both event names to ensure client compatibility
   io.emit('online-users', playersList);
   io.emit('updatePlayers', playersList);
+  io.emit('playerDisconnected', { username });
   console.log(`[Server] Current online players:`, playersList.map(p => p.username));
 }
 
