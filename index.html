@@ -343,7 +343,6 @@
             box-shadow: 0 5px 20px rgba(241, 196, 15, 0.4);
         }
 
-        /* สไตล์ป้ายชื่อแบบ 3D Overlay ทั้งสองฝั่ง */
         .side-nametag {
             position: absolute;
             left: 50%;
@@ -457,11 +456,10 @@
         const ZOOM_MAX = 28.0; 
         let currentZoomLevel = 0; 
 
-        // ฟังก์ชันคำนวณตำแหน่งกล้องแบบพลิกด้านตามสีของฝั่งผู้เล่นใช้งานจริง
+        // ฟังก์ชันคำนวณตำแหน่งกล้องแบบพลิกด้านตามสีของฝั่งผู้เล่น
         function adjustCameraForDevice() {
             const aspect = window.innerWidth / window.innerHeight;
             
-            // ตั้งค่าแกน Z พื้นฐาน (ถ้าเราได้สีเขียวในโหมดออนไลน์ กล้องจะติดลบ เพื่อหมุนไปมองจากด้านบนลงล่าง)
             let zDirectionMultiplier = 1.0;
             if (gameMode === 'online' && myRole === 'green') {
                 zDirectionMultiplier = -1.0; 
@@ -475,8 +473,9 @@
                 baseParams = { x: 0, y: 9.5, z: 8.5 * zDirectionMultiplier };
             }
             
+            // ป้องกันปัญหากล้องเป็นเวกเตอร์ศูนย์ ให้บวกค่าความยาวตรงๆ
             const dir = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).normalize();
-            const baseLength = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).length();
+            const baseLength = 12.0; // ความยาวคงที่ของเวกเตอร์รัศมีกล้องหลัก
             let targetLength = baseLength + currentZoomLevel;
             
             if (targetLength < ZOOM_MIN) { targetLength = ZOOM_MIN; currentZoomLevel = ZOOM_MIN - baseLength; }
@@ -608,7 +607,6 @@
             }
         }
 
-        // ฟังก์ชันป้ายชื่อจะสลับตำแหน่งและขอบสีตามมุมมองกล้องของฝั่งนั้น ๆ โดยอัตโนมัติ
         function updateNametags() {
             const topTag = document.getElementById('nametag-top');
             const bottomTag = document.getElementById('nametag-bottom');
@@ -1047,7 +1045,6 @@
                 
                 document.getElementById('game-mode-select').value = 'online'; 
                 
-                // สั่งเปลี่ยนโหมดโดยตรงแบบไม่เรียก resetGame ซ้ำซ้อน
                 const friendSection = document.getElementById('friend-select-section');
                 const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
                 friendSection.style.display = 'block'; 
