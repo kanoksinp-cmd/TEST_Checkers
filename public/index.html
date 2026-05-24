@@ -511,7 +511,7 @@
         }
     </style>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         // โหลด socket.io จาก CDN — ถ้าล้มเหลวจะใช้ mock แทน (standalone mode)
         (function() {
@@ -1496,7 +1496,7 @@
                 // ขอรายชื่อล่าสุดจาก server
                 if (socket && socket.connected) {
                     socket.emit('getPlayers');
-                    socket.emit('requestPlayers');
+                    socket.emit('registerPlayer', username);
                 }
             } else if (mode === 'local') {
                 friendSection.style.display = 'none'; 
