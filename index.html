@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>หมากฮอสไทย 3D ออนไลน์ (All-in-One)</title>
+    <title>หมากฮอสไทย 3D ออนไลน์</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
 
@@ -50,10 +50,10 @@
             border: 2px solid #ff7675;
         }
 
-        .turn-white {
-            background: linear-gradient(135deg, #ffffff, #dfe6e9);
-            color: #2d3436;
-            border: 2px solid #b2bec3;
+        .turn-blue {
+            background: linear-gradient(135deg, #0984e3, #0a3d62);
+            color: #ffffff;
+            border: 2px solid #74b9ff;
         }
 
         #combo-timer-display {
@@ -203,13 +203,6 @@
             border-color: #00ffcc;
         }
 
-        select:disabled {
-            background: #1e2530;
-            color: #7f8c8d;
-            border-color: rgba(255,255,255,0.05);
-            cursor: not-allowed;
-        }
-
         button {
             width: 100%;
             padding: 12px;
@@ -351,35 +344,6 @@
         </div>
 
         <div class="section">
-            <h3>🎨 ปรับแต่งสีและสกินหมาก</h3>
-            <div style="margin-top:10px; display:flex; gap:10px; flex-direction:column;">
-                <div>
-                    <label>🔴 ฝั่งสีหมากประจำตัวคุณ:</label>
-                    <select id="user-color-select" onchange="changePlayerColor(this.value)">
-                        <option value="red" selected>ฝ่ายสีแดง (เริ่มเดินก่อน)</option>
-                        <option value="white">ฝ่ายสีขาว (เดินทีหลัง)</option>
-                    </select>
-                </div>
-                <div>
-                    <label>รูปแบบเนื้อผิวหมาก:</label>
-                    <select onchange="changePieceSkin(this.value)">
-                        <option value="matte" selected>Matte Plastic (ผิวด้าน)</option>
-                        <option value="metallic">Metallic Chrome (โลหะเงา)</option>
-                        <option value="neon">Glow Neon (เรืองแสงไซเบอร์)</option>
-                    </select>
-                </div>
-                <div>
-                    <label>รูปแบบสกินกระดาน:</label>
-                    <select onchange="changeBoardSkin(this.value)">
-                        <option value="classic" selected>Classic Wood</option>
-                        <option value="cyber">Cyber Neon</option>
-                        <option value="marble">Premium Marble</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
             <h3>🎮 โหมดการเล่น</h3>
             <label style="margin-top:10px;">เลือกประเภทการจับคู่:</label>
             <select id="game-mode-select" onchange="changeGameMode(this.value)">
@@ -454,37 +418,21 @@
             document.getElementById('server-status').style.color = '#ff4d4d';
         });
 
-        const SKINS = {
-            board: {
-                classic: { dark: 0x2c3e50, light: 0xecf0f1, roughness: 0.6, metalness: 0.1 },
-                cyber:   { dark: 0x0f172a, light: 0x1e293b, roughness: 0.2, metalness: 0.8 }, 
-                marble:  { dark: 0x111111, light: 0xffffff, roughness: 0.1, metalness: 0.0 }
-            },
-            pieces: {
-                matte: {
-                    red: { color: 0xcc0000, roughness: 0.6, metalness: 0.1, emissive: 0x000000 },
-                    white: { color: 0xeeeeee, roughness: 0.6, metalness: 0.1, emissive: 0x000000 }
-                },
-                metallic: {
-                    red: { color: 0xb71c1c, roughness: 0.15, metalness: 0.9, emissive: 0x000000 }, 
-                    white: { color: 0xdfe6e9, roughness: 0.1, metalness: 0.95, emissive: 0x000000 } 
-                },
-                neon: {
-                    red: { color: 0xff0055, roughness: 0.3, metalness: 0.3, emissive: 0xff0022 }, 
-                    white: { color: 0x00ffcc, roughness: 0.3, metalness: 0.3, emissive: 0x00aa88 }
-                }
-            }
+        // ฟิกซ์สีและพื้นผิวเป็นแบบพรีเมียม (แดง-น้ำเงิน)
+        const PIECE_MATERIALS = {
+            red: { color: 0xb71c1c, roughness: 0.2, metalness: 0.5, emissive: 0x000000 },
+            blue: { color: 0x0f4c81, roughness: 0.2, metalness: 0.5, emissive: 0x000000 }
         };
 
-        let currentBoardSkin = 'classic'; let currentPieceSkin = 'matte';
+        // สกินกระดานไม้คลาสสิกคงเดิม
+        const BOARD_SKIN = { dark: 0x2c3e50, light: 0xecf0f1, roughness: 0.6, metalness: 0.1 };
 
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
                 const isDark = (r + c) % 2 === 1;
-                const skin = SKINS.board[currentBoardSkin];
                 const tileGeo = new THREE.BoxGeometry(1, 0.1, 1);
                 const tileMat = new THREE.MeshStandardMaterial({ 
-                    color: isDark ? skin.dark : skin.light, roughness: skin.roughness, metalness: skin.metalness
+                    color: isDark ? BOARD_SKIN.dark : BOARD_SKIN.light, roughness: BOARD_SKIN.roughness, metalness: BOARD_SKIN.metalness
                 });
                 const tile = new THREE.Mesh(tileGeo, tileMat);
                 tile.position.set(c - 3.5, 0, r - 3.5);
@@ -497,7 +445,6 @@
         function drawPieces() {
             piece3DObjects.forEach(p => scene.remove(p));
             piece3DObjects = [];
-            const pSkin = SKINS.pieces[currentPieceSkin];
 
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
@@ -506,7 +453,7 @@
                         let pieceMesh;
                         const isRed = (val === 1 || val === 3);
                         const isKing = (val === 3 || val === 4);
-                        const matConfig = isRed ? pSkin.red : pSkin.white;
+                        const matConfig = isRed ? PIECE_MATERIALS.red : PIECE_MATERIALS.blue;
                         const mat = new THREE.MeshStandardMaterial(matConfig);
 
                         if (!isKing) {
@@ -551,32 +498,14 @@
             }
         }
 
-        function changeBoardSkin(skinName) {
-            currentBoardSkin = skinName;
-            const skin = SKINS.board[skinName];
-            tiles3DObjects.forEach(tile => {
-                const isDark = tile.userData.isDarkSkin;
-                tile.material.color.setHex(isDark ? skin.dark : skin.light);
-            });
-        }
-
-        function changePieceSkin(skinName) { currentPieceSkin = skinName; drawPieces(); }
-
-        function changePlayerColor(color) {
-            if (gameMode === 'online') return;
-            myRole = color;
-            updateTitleText();
-            resetGame();
-        }
-
         function updateTitleText() {
             const titleEl = document.getElementById('h2h-title');
             if (gameMode === 'online') {
-                titleEl.innerText = myRole === 'red' ? `🔴 คุณ (แดง) VS ⚪ ขาว (${selectedFriend || 'คู่แข่ง'})` : `⚪ คุณ (ขาว) VS 🔴 แดง (${selectedFriend || 'คู่แข่ง'})`;
+                titleEl.innerText = myRole === 'red' ? `🔴 คุณ (แดง) VS 🔵 น้ำเงิน (${selectedFriend || 'คู่แข่ง'})` : `🔵 คุณ (น้ำเงิน) VS 🔴 แดง (${selectedFriend || 'คู่แข่ง'})`;
             } else if (gameMode === 'local') {
-                titleEl.innerText = "🔴 แดง (ผู้เล่น 1) VS ⚪ ขาว (ผู้เล่น 2)";
+                titleEl.innerText = "🔴 แดง (ผู้เล่น 1) VS 🔵 น้ำเงิน (ผู้เล่น 2)";
             } else {
-                titleEl.innerText = myRole === 'red' ? "🔴 คุณ (แดง) VS ⚪ บอท AI (ขาว)" : "⚪ คุณ (ขาว) VS 🔴 บอท AI (แดง)";
+                titleEl.innerText = myRole === 'red' ? "🔴 คุณ (แดง) VS 🔵 บอท AI (น้ำเงิน)" : "🔵 คุณ (น้ำเงิน) VS 🔴 บอท AI (แดง)";
             }
         }
 
@@ -603,23 +532,19 @@
             gameMode = mode;
             const friendSection = document.getElementById('friend-select-section');
             const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
-            const colorSelectElement = document.getElementById('user-color-select');
             
             if (mode === 'online') {
                 friendSection.style.display = 'block'; 
                 aiDifficultyContainer.style.display = 'none'; 
-                colorSelectElement.disabled = true; // 🔒 ล็อกไม่ให้กดเลือกสีเองในโหมดออนไลน์
                 renderOnlineFriends();
             } else if (mode === 'local') {
                 friendSection.style.display = 'none'; 
                 aiDifficultyContainer.style.display = 'none'; 
-                colorSelectElement.disabled = true;
                 myRole = 'local';
             } else {
                 friendSection.style.display = 'none'; 
                 aiDifficultyContainer.style.display = 'block'; 
-                colorSelectElement.disabled = false; // 🔓 เปิดให้เลือกได้ตามปกติ
-                myRole = colorSelectElement.value;
+                myRole = 'red'; // บอทให้ผู้เล่นเริ่มเป็นสีแดงก่อนเสมอเป็นค่าเริ่มต้น
             }
             updateTitleText();
             resetGame();
@@ -634,19 +559,17 @@
             if (gameMode === 'online') {
                 if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งที่จะท้าดวลก่อนครับ!"); return; }
                 
-                // 🎲 ระบบสุ่มสีอัตโนมัติฝั่งผู้ส่งคำท้า (50/50)
-                const assignedColor = Math.random() < 0.5 ? 'red' : 'white';
+                // 🎲 ระบบสุ่มสีอัตโนมัติฝั่งผู้ส่งคำท้า (50/50ระหว่างแดงกับน้ำเงิน)
+                const assignedColor = Math.random() < 0.5 ? 'red' : 'blue';
                 myRole = assignedColor;
-                document.getElementById('user-color-select').value = assignedColor;
                 
                 updateTitleText();
-                // ส่งค่าสีของตัวเราไปให้เซิร์ฟเวอร์ เพื่อที่ปลายทางจะได้สีที่ตรงข้ามโดยอัตโนมัติ
                 socket.emit('challengePlayer', { 
                     target: selectedFriend, 
                     challenger: localStorage.getItem('checkers_username'),
                     challengerColor: assignedColor 
                 });
-                alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '⚪ สีขาว'} กำลังรอการตอบรับ...`);
+                alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🔵 สีน้ำเงิน'} กำลังรอการตอบรับ...`);
             }
             resetGame(); toggleMainPanel();
         }
@@ -663,7 +586,7 @@
             document.getElementById('game-over-modal').style.display = 'none';
             updateUI(false); drawPieces();
             
-            if (gameMode === 'bot' && myRole === 'white') {
+            if (gameMode === 'bot' && myRole === 'blue') {
                 triggerBotAiIfNeeded();
             }
         }
@@ -762,7 +685,7 @@
                 comboPiece = { row: eR, col: eC }; selectedPiece = comboPiece;
                 updateUI(true); drawPieces();
 
-                const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'white') || (currentTurn === 2 && myRole === 'red')));
+                const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red')));
                 if (isBotTurn) {
                     setTimeout(() => executeBotComboMove(eR, eC), 600);
                 } else {
@@ -798,12 +721,12 @@
         }
 
         function endTurnProcess() {
-            let rPieces = 0, wPieces = 0;
+            let rPieces = 0, bPieces = 0;
             for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) wPieces++; }
+                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) bPieces++; }
             }
-            if (rPieces === 0) { triggerGameOver("สีขาว"); return; }
-            if (wPieces === 0) { triggerGameOver("สีแดง"); return; }
+            if (rPieces === 0) { triggerGameOver("สีน้ำเงิน"); return; }
+            if (bPieces === 0) { triggerGameOver("สีแดง"); return; }
 
             currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
             updateUI(false); drawPieces(); triggerBotAiIfNeeded();
@@ -812,7 +735,7 @@
         function triggerBotAiIfNeeded() {
             if (gameMode !== 'bot' || isGameOver) return;
 
-            const isBotActive = (currentTurn === 1 && myRole === 'white') || (currentTurn === 2 && myRole === 'red');
+            const isBotActive = (currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red');
             if (!isBotActive) return;
 
             setTimeout(() => {
@@ -858,10 +781,10 @@
         window.addEventListener('click', (event) => {
             if (isGameOver) return;
             if (gameMode === 'online') {
-                if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'white') return;
+                if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'blue') return;
             }
             if (gameMode === 'bot') {
-                if (currentTurn === 1 && myRole === 'white') return;
+                if (currentTurn === 1 && myRole === 'blue') return;
                 if (currentTurn === 2 && myRole === 'red') return;
             }
             
@@ -895,8 +818,8 @@
 
         function updateUI(hasSelected) {
             const el = document.getElementById('turn-display');
-            let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีขาว";
-            el.className = currentTurn === 1 ? "turn-red" : "turn-white";
+            let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีน้ำเงิน";
+            el.className = currentTurn === 1 ? "turn-red" : "turn-blue";
             if (comboPiece) {
                 el.innerText = `💥 ${name} กำลังทำคอมโบกินต่อเนื่อง! (ครั้งที่ ${jumpCount})`;
             } else {
@@ -928,13 +851,10 @@
                 gameMode = 'online'; 
                 selectedFriend = data.challenger;
                 
-                // 🤖 ระบบเลือกสีให้อัตโนมัติ: ตัวเราจะได้สีตรงข้ามกับผู้ส่งคำท้าเสมอ
-                myRole = (data.challengerColor === 'red') ? 'white' : 'red';
+                // 🤖 ระบบเลือกสีให้อัตโนมัติ: ตัวเราจะได้สีตรงข้ามกับผู้ส่งคำท้าเสมอ (แดง <-> น้ำเงิน)
+                myRole = (data.challengerColor === 'red') ? 'blue' : 'red';
                 
                 document.getElementById('game-mode-select').value = 'online'; 
-                document.getElementById('user-color-select').value = myRole;
-                document.getElementById('user-color-select').disabled = true;
-
                 changeGameMode('online'); 
                 selectOnlineFriend(data.challenger);
                 
@@ -944,7 +864,7 @@
                     responderColor: myRole
                 });
                 
-                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '⚪ สีขาว'}]`);
+                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🔵 สีน้ำเงิน'}]`);
                 resetGame(); 
                 if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
             }
