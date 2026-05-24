@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>หมากฮอสไทย 3D ออนไลน์</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background-color: #111111;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #turn-display-container {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 90%;
+            max-width: 450px;
+        }
+
+        #turn-display {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            width: 100%;
+            letter-spacing: 0.5px;
+        }
+
+        @media (min-width: 480px) {
+            #turn-display {
+                font-size: 18px;
+                padding: 12px 35px;
+            }
+        }
+
+        /* ปรับสี UI ตาเดินให้สว่างขึ้น */
+        .turn-red {
+            background: linear-gradient(135deg, #ff4d4d, #ff0000);
+            color: #ffffff;
+            border: 2px solid #ff9999;
+        }
+
+        .turn-blue {
+            background: linear-gradient(135deg, #00d2ff, #0072ff);
+            color: #ffffff;
+            border: 2px solid #80e5ff;
+        }
+
+        #combo-timer-display {
+            display: none;
+            background: rgba(255, 71, 87, 0.9);
+            color: white;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+            animation: pulse-border 1s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.8; }
+        }
+
+        #login-shortcut-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 18, 26, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            color: #00ffcc;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        #login-shortcut-btn:hover {
+            background: rgba(0, 255, 204, 0.2);
+            border-color: #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        #zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .zoom-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(15, 18, 26, 0.85);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.9);
+            background: #00ffcc;
+            color: #111111;
+            border-color: #00ffcc;
+        }
+
+        @media (min-width: 768px) {
+            .zoom-btn:hover {
+                background: rgba(0, 255, 204, 0.2);
+                border-color: #00ffcc;
+                color: #00ffcc;
+            }
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            max-width: 340px;
+            height: 100%;
+            background: rgba(15, 18, 26, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 25px 20px;
+            color: #f5f6fa;
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: 8px 0 30px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        #control-panel.collapsed {
+            transform: translateX(-100%);
+        }
+
+        #panel-toggle-trigger {
+            position: absolute;
+            top: 15px;
+            right: -40px;
+            width: 40px;
+            height: 40px;
+            background: rgba(15, 18, 26, 0.98);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-left: none;
+            color: #00ffcc;
+            font-size: 16px;
+            cursor: pointer;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 5px 2px 15px rgba(0,0,0,0.4);
+        }
+
+        h2 {
+            color: #00ffcc;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h3 {
+            color: #00a8ff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            border-left: 3px solid #00a8ff;
+            padding-left: 8px;
+        }
+
+        .section {
+            background: rgba(255,255,255,0.03);
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 6px;
+            color: #a4b0be;
+            font-weight: 600;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px;
+            background: #090b0e;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #ffffff;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00ffcc, #00a8ff);
+            color: #0f121a;
+            margin-top: 5px;
+        }
+
+        .btn-danger {
+            background: #ff4757;
+            color: #ffffff;
+            margin-top: 8px;
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        #server-status {
+            font-size: 11px;
+            text-align: center;
+            color: #a4b0be;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        #friend-select-section {
+            display: none;
+        }
+
+        #game-over-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #161a23;
+            border: 2px solid #00ffcc;
+            padding: 30px 20px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.3);
+            width: 85%;
+            max-width: 360px;
+            animation: modalFadeIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes modalFadeIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-content h1 {
+            color: #fff;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            color: #00ffcc;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            color: #111;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 50px;
+            box-shadow: 0 5px 20px rgba(241, 196, 15, 0.4);
+        }
+
+        .side-nametag {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 6px;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            pointer-events: none;
+            z-index: 5;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: 1px solid transparent;
+        }
+        #nametag-top {
+            top: 85px;
+            background: rgba(30, 30, 30, 0.85);
+        }
+        #nametag-bottom {
+            bottom: 85px;
+            background: rgba(30, 30, 30, 0.85);
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <div id="turn-display-container">
+        <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
+        <div id="combo-timer-display">⚡ ต้องกินต่อ! เวลาที่เหลือ: 5.0 วินาที</div>
+    </div>
+
+    <div id="nametag-top" class="side-nametag">ฝั่งตรงข้าม</div>
+    <div id="nametag-bottom" class="side-nametag">ตัวคุณ</div>
+
+    <div id="zoom-controls">
+        <div class="zoom-btn" onclick="zoomGame(-1.5)" title="ซูมเข้า">＋</div>
+        <div class="zoom-btn" onclick="zoomGame(1.5)" title="ซูมออก">－</div>
+    </div>
+
+    <button id="login-shortcut-btn" onclick="openLoginPanel()">👤 จัดการโปรไฟล์ / เข้าสู่ระบบ</button>
+
+    <div id="game-over-modal">
+        <div class="modal-content">
+            <h1>🎉 จบการแข่งขัน 🎉</h1>
+            <p id="winner-text">ฝ่ายสีแดง ชนะ!</p>
+            <button class="btn-restart" onclick="restartFromModal()">🏁 เล่นอีกครั้ง / รีเซ็ตเกม</button>
+        </div>
+    </div>
+
+    <div id="control-panel" class="collapsed">
+        <button id="panel-toggle-trigger" onclick="toggleMainPanel()">▶</button>
+        <h2 id="h2h-title">หมากฮอสไทย 3D</h2>
+        <p style="font-size:11px; text-align:center; color:#95a5a6; margin-top:-5px;">ระบบกระดานออนไลน์ Real-time</p>
+
+        <div class="section">
+            <h3>👤 โปรไฟล์ผู้เล่น</h3>
+            <div id="auth-section" style="margin-top:5px;">
+                <label>ตั้งชื่อเล่นของคุณ:</label>
+                <input type="text" id="username-input" placeholder="พิมพ์ชื่อภาษาอังกฤษ..." maxlength="15">
+                <button class="btn-primary" onclick="registerPlayer()">เข้าสู่ระบบออนไลน์</button>
+            </div>
+            <div id="profile-section" style="display: none; text-align: center; margin-top: 5px;">
+                <p>ผู้เล่นออนไลน์: <strong id="user-display" style="color:#00ffcc;">-</strong></p>
+                <button class="btn-danger" onclick="logoutPlayer()">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🎮 โหมดการเล่น</h3>
+            <label style="margin-top:5px;">เลือกประเภทการจับคู่:</label>
+            <select id="game-mode-select" onchange="changeGameMode(this.value)">
+                <option value="bot" selected>🤖 สู้กับบอท (AI Computer)</option>
+                <option value="local">👥 เล่นสองคนบนเครื่องเดียวกัน (Local)</option>
+                <option value="online">🌐 ประลองออนไลน์ข้ามเครื่อง (Multiplayer)</option>
+            </select>
+
+            <div id="ai-difficulty-container" style="margin-top: 10px;">
+                <label>ระดับความยากของบอท AI:</label>
+                <select id="ai-difficulty-select" onchange="changeAiDifficulty(this.value)">
+                    <option value="easy">🟢 ง่าย (เดินสุ่มทั่วไป)</option>
+                    <option value="medium" selected>🟡 ปานกลาง (เน้นเดินกินหมากคุณ)</option>
+                    <option value="hard">🔴 ยาก (คิดลอจิกเป็นขุน / กินได้เปรียบ)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section" id="friend-select-section">
+            <h3>⚔️ รายชื่อผู้ท้าชิงออนไลน์</h3>
+            <select id="friend-list-select" onchange="selectOnlineFriend(this.value)">
+                <option value="">-- ไม่พบผู้เล่นอื่นออนไลน์ --</option>
+            </select>
+        </div>
+
+        <button class="btn-primary" style="padding:12px; font-size:15px; background: linear-gradient(135deg, #f1c40f, #f39c12); color:#111;" onclick="startGameSession()">🏁 เริ่มเกมใหม่ / รีเซ็ต</button>
+
+        <div id="server-status">กำลังตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์...</div>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const ZOOM_MIN = 2.0; 
+        const ZOOM_MAX = 28.0; 
+        let currentZoomLevel = 0; 
+
+        let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
+        let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = 'red'; 
+
+        let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
+        let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
+
+        function adjustCameraForDevice() {
+            const aspect = window.innerWidth / window.innerHeight;
+            
+            let zDirectionMultiplier = 1.0;
+            if (typeof gameMode !== 'undefined' && gameMode === 'online' && typeof myRole !== 'undefined' && myRole === 'blue') {
+                zDirectionMultiplier = -1.0; 
+            }
+
+            let baseParams = { x: 0, y: 8.5, z: 8.5 * zDirectionMultiplier };
+
+            if (aspect < 1) { 
+                baseParams = { x: 0, y: 11.5, z: 8.0 * zDirectionMultiplier };
+            } else if (aspect < 1.3) { 
+                baseParams = { x: 0, y: 9.5, z: 8.5 * zDirectionMultiplier };
+            }
+            
+            const dir = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).normalize();
+            const baseLength = 12.0; 
+            let targetLength = baseLength + currentZoomLevel;
+            
+            if (targetLength < ZOOM_MIN) { targetLength = ZOOM_MIN; currentZoomLevel = ZOOM_MIN - baseLength; }
+            if (targetLength > ZOOM_MAX) { targetLength = ZOOM_MAX; currentZoomLevel = ZOOM_MAX - baseLength; }
+
+            dir.multiplyScalar(targetLength);
+            camera.position.set(dir.x, dir.y, dir.z);
+            camera.lookAt(0, -0.6, 0);
+        }
+        
+        adjustCameraForDevice();
+
+        function zoomGame(amount) {
+            currentZoomLevel += amount;
+            adjustCameraForDevice();
+        }
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.35);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        let boardState = [
+            [0, 2, 0, 2, 0, 2, 0, 2], [2, 0, 2, 0, 2, 0, 2, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
+        ];
+
+        const socket = io({ transports: ['websocket'], upgrade: false }); 
+        let onlineFriendsList = []; 
+
+        socket.on('connect', () => {
+            document.getElementById('server-status').innerText = '🟢 เชื่อมต่อเซิร์ฟเวอร์สำเร็จแล้ว';
+            document.getElementById('server-status').style.color = '#00ffcc';
+            checkSavedPlayer(); 
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('server-status').innerText = '🔴 ขาดการเชื่อมต่อ';
+            document.getElementById('server-status').style.color = '#ff4d4d';
+        });
+
+        /* [อัปเดตเฉดสี 3D ใหม่] */
+        const PIECE_MATERIALS = {
+            red: { color: 0xff1e1e, roughness: 0.15, metalness: 0.3, emissive: 0x3a0000 },   // แดงสว่างสดใสขึ้น
+            blue: { color: 0x00d2ff, roughness: 0.15, metalness: 0.4, emissive: 0x002b3d }   // เปลี่ยนจากเขียวเป็นฟ้าสว่าง (Cyan neon)
+        };
+
+        const BOARD_SKIN = { dark: 0x2c3e50, light: 0xecf0f1, roughness: 0.6, metalness: 0.1 };
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                const isDark = (r + c) % 2 === 1;
+                const tileGeo = new THREE.BoxGeometry(1, 0.1, 1);
+                const tileMat = new THREE.MeshStandardMaterial({ 
+                    color: isDark ? BOARD_SKIN.dark : BOARD_SKIN.light, roughness: BOARD_SKIN.roughness, metalness: BOARD_SKIN.metalness
+                });
+                const tile = new THREE.Mesh(tileGeo, tileMat);
+                tile.position.set(c - 3.5, 0, r - 3.5);
+                tile.userData = { row: r, col: c, isDarkSkin: isDark };
+                scene.add(tile);
+                tiles3DObjects.push(tile);
+            }
+        }
+
+        function drawPieces() {
+            piece3DObjects.forEach(p => scene.remove(p));
+            piece3DObjects = [];
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const val = boardState[r][c];
+                    if (val !== 0) {
+                        let pieceMesh;
+                        const isRed = (val === 1 || val === 3);
+                        const isKing = (val === 3 || val === 4);
+                        const matConfig = isRed ? PIECE_MATERIALS.red : PIECE_MATERIALS.blue;
+                        const mat = new THREE.MeshStandardMaterial(matConfig);
+
+                        if (!isKing) {
+                            const geo = new THREE.CylinderGeometry(0.35, 0.35, 0.15, 32);
+                            pieceMesh = new THREE.Mesh(geo, mat);
+                            pieceMesh.position.set(c - 3.5, 0.125, r - 3.5);
+                        } else {
+                            const group = new THREE.Group();
+                            const geo1 = new THREE.CylinderGeometry(0.35, 0.35, 0.12, 32);
+                            const m1 = new THREE.Mesh(geo1, mat); m1.position.y = 0.06; group.add(m1);
+                            
+                            const geo2 = new THREE.CylinderGeometry(0.32, 0.32, 0.12, 32);
+                            const m2 = new THREE.Mesh(geo2, mat); m2.position.y = 0.18; group.add(m2);
+                            
+                            const crownBaseGeo = new THREE.CylinderGeometry(0.22, 0.24, 0.05, 16);
+                            const crownBase = new THREE.Mesh(crownBaseGeo, mat);
+                            crownBase.position.y = 0.265;
+                            group.add(crownBase);
+
+                            const spikeGeo = new THREE.ConeGeometry(0.06, 0.18, 4);
+                            const spikeOffsets = [{x: 0.13, z: 0}, {x: -0.13, z: 0}, {x: 0, z: 0.13}, {x: 0, z: -0.13}];
+                            spikeOffsets.forEach(offset => {
+                                const spike = new THREE.Mesh(spikeGeo, mat);
+                                spike.position.set(offset.x, 0.35, offset.z);
+                                group.add(spike);
+                            });
+
+                            const gemGeo = new THREE.SphereGeometry(0.05, 8, 8);
+                            const gemMat = new THREE.MeshStandardMaterial({
+                                color: isRed ? 0xffea00 : 0xffffff, roughness: 0.1, metalness: 0.9, emissive: isRed ? 0x4a3b00 : 0x3a3a3a
+                            });
+                            const gem = new THREE.Mesh(gemGeo, gemMat);
+                            gem.position.y = 0.38;
+                            group.add(gem);
+
+                            pieceMesh = group; 
+                            pieceMesh.position.set(c - 3.5, 0, r - 3.5);
+                        }
+                        scene.add(pieceMesh); piece3DObjects.push(pieceMesh);
+                    }
+                }
+            }
+        }
+
+        /* [อัปเดตแท็กข้อความข้างกระดาน] */
+        function updateNametags() {
+            const topTag = document.getElementById('nametag-top');
+            const bottomTag = document.getElementById('nametag-bottom');
+            let myName = localStorage.getItem('checkers_username') || "คุณ";
+
+            if (gameMode === 'bot') {
+                topTag.innerText = `ฝั่งสีฟ้า: บอท AI (${aiDifficulty.toUpperCase()})`;
+                topTag.style.borderColor = "#00d2ff";
+                bottomTag.innerText = `ฝั่งสีแดง: ${myName}`;
+                bottomTag.style.borderColor = "#ff1e1e";
+            } else if (gameMode === 'local') {
+                topTag.innerText = `ฝั่งสีฟ้า: ผู้เล่นคนที่ 2`;
+                topTag.style.borderColor = "#00d2ff";
+                bottomTag.innerText = `ฝั่งสีแดง: ผู้เล่นคนที่ 1`;
+                bottomTag.style.borderColor = "#ff1e1e";
+            } else if (gameMode === 'online') {
+                if (myRole === 'red') {
+                    topTag.innerText = `ฝั่งสีฟ้า: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
+                    topTag.style.borderColor = "#00d2ff";
+                    bottomTag.innerText = `ฝั่งสีแดง: ${myName} (คุณ)`;
+                    bottomTag.style.borderColor = "#ff1e1e";
+                } else {
+                    topTag.innerText = `ฝั่งสีแดง: ${selectedFriend || 'คู่แข่งกำลังเชื่อมต่อ'}`;
+                    topTag.style.borderColor = "#ff1e1e";
+                    bottomTag.innerText = `ฝั่งสีฟ้า: ${myName} (คุณ)`;
+                    bottomTag.style.borderColor = "#00d2ff";
+                }
+            }
+        }
+
+        function updateTitleText() {
+            const titleEl = document.getElementById('h2h-title');
+            if (gameMode === 'online') {
+                titleEl.innerText = myRole === 'red' ? `🔴 คุณ VS 🔵 ${selectedFriend || 'คู่แข่ง'}` : `🔵 คุณ VS 🔴 ${selectedFriend || 'คู่แข่ง'}`;
+            } else if (gameMode === 'local') {
+                titleEl.innerText = "🔴 แดง VS 🔵 ฟ้า";
+            } else {
+                titleEl.innerText = myRole === 'red' ? "🔴 คุณ VS 🔵 บอท AI" : "🔵 คุณ VS 🔴 บอท AI";
+            }
+            updateNametags();
+        }
+
+        function renderOnlineFriends() {
+            const selectBox = document.getElementById('friend-list-select');
+            if (!selectBox) return;
+            selectBox.innerHTML = '<option value="">-- กรุณาเลือกคู่แข่ง --</option>';
+            let mySavedName = localStorage.getItem('checkers_username') || '';
+            let counter = 0;
+
+            onlineFriendsList.forEach(player => {
+                if (player.username && player.username !== mySavedName) {
+                    const option = document.createElement('option');
+                    option.value = player.username;
+                    option.innerText = `🔵 ${player.username}`;
+                    selectBox.appendChild(option);
+                    counter++;
+                }
+            });
+            if (counter === 0) selectBox.innerHTML = '<option value="">❌ ไม่มีผู้เล่นคนอื่นออนไลน์</option>';
+        }
+
+        function changeGameMode(mode) {
+            gameMode = mode;
+            const friendSection = document.getElementById('friend-select-section');
+            const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
+            
+            if (mode === 'online') {
+                friendSection.style.display = 'block'; 
+                aiDifficultyContainer.style.display = 'none'; 
+                renderOnlineFriends();
+            } else if (mode === 'local') {
+                friendSection.style.display = 'none'; 
+                aiDifficultyContainer.style.display = 'none'; 
+                myRole = 'local';
+            } else {
+                friendSection.style.display = 'none'; 
+                aiDifficultyContainer.style.display = 'block'; 
+                myRole = 'red';
+            }
+            adjustCameraForDevice(); 
+            updateTitleText();
+            resetGame();
+        }
+
+        function changeAiDifficulty(diff) { aiDifficulty = diff; updateNametags(); }
+        function selectOnlineFriend(friendName) { selectedFriend = friendName; if (gameMode === 'online' && friendName !== "") { updateTitleText(); } }
+        function toggleMainPanel() { const panel = document.getElementById('control-panel'); panel.classList.toggle('collapsed'); document.getElementById('panel-toggle-trigger').innerText = panel.classList.contains('collapsed') ? '▶' : '◀'; }
+        function openLoginPanel() { const panel = document.getElementById('control-panel'); if (panel.classList.contains('collapsed')) { toggleMainPanel(); } const inputField = document.getElementById('username-input'); if (inputField && document.getElementById('auth-section').style.display !== 'none') { inputField.focus(); } }
+
+        function startGameSession() {
+            if (gameMode === 'online') {
+                if (selectedFriend === "") { alert("⚠️ โปรดเลือกคู่แข่งที่จะท้าดวลก่อนครับ!"); return; }
+                const assignedColor = Math.random() < 0.5 ? 'red' : 'blue';
+                myRole = assignedColor;
+                
+                adjustCameraForDevice(); 
+                updateTitleText();
+                
+                socket.emit('challengePlayer', { 
+                    target: selectedFriend, 
+                    challenger: localStorage.getItem('checkers_username'),
+                    challengerColor: assignedColor === 'red' ? 'red' : 'green'
+                });
+                alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🔵 สีฟ้า'} กำลังรอการตอบรับ...`);
+            }
+            resetGame(); toggleMainPanel();
+        }
+
+        function resetGame() {
+            boardState = [
+                [0, 2, 0, 2, 0, 2, 0, 2], [2, 0, 2, 0, 2, 0, 2, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
+            ];
+            currentTurn = 1; selectedPiece = null; isGameOver = false;
+            jumpCount = 0; comboPiece = null; stopComboTimer();
+            document.getElementById('game-over-modal').style.display = 'none';
+            
+            adjustCameraForDevice(); 
+            updateUI(false); drawPieces(); updateNametags();
+            
+            if (gameMode === 'bot' && myRole === 'blue') {
+                triggerBotAiIfNeeded();
+            }
+        }
+
+        function restartFromModal() { if (gameMode === 'online') { startGameSession(); } else { resetGame(); } }
+
+        function checkMove(startRow, startCol, endRow, endCol) {
+            const pType = boardState[startRow][startCol];
+            if (boardState[endRow][endCol] !== 0) return { valid: false };
+            const rDiff = endRow - startRow; const cDiff = endCol - startCol;
+            const absR = Math.abs(rDiff); const absC = Math.abs(cDiff);
+
+            if (absR !== absC) return { valid: false };
+
+            if (pType === 1 || pType === 2) {
+                if (pType === 1 && rDiff > 0) return { valid: false }; 
+                if (pType === 2 && rDiff < 0) return { valid: false }; 
+
+                if (absR === 1) {
+                    if ((pType === 1 && rDiff === -1) || (pType === 2 && rDiff === 1)) return { valid: true, type: 'normal' };
+                }
+                if (absR === 2) {
+                    const midR = startRow + rDiff / 2; const midC = startCol + cDiff / 2;
+                    const enemyList = pType === 1 ? [2, 4] : [1, 3];
+                    if (enemyList.includes(boardState[midR][midC])) return { valid: true, type: 'jump', eat: [{ r: midR, c: midC }] };
+                }
+            }
+            
+            if (pType === 3 || pType === 4) {
+                const stepR = rDiff / absR; const stepC = cDiff / absC; let piecesInWay = [];
+                for (let i = 1; i < absR; i++) {
+                    const currR = startRow + (i * stepR); const currC = startCol + (i * stepC);
+                    if (boardState[currR][currC] !== 0) piecesInWay.push({ r: currR, c: currC, type: boardState[currR][currC] });
+                }
+                if (piecesInWay.length === 0) { return { valid: true, type: 'normal' }; }
+                if (piecesInWay.length === 1) {
+                    const enemyList = (pType === 3) ? [2, 4] : [1, 3];
+                    if (enemyList.includes(piecesInWay[0].type)) return { valid: true, type: 'jump', eat: [{ r: piecesInWay[0].r, c: piecesInWay[0].c }] };
+                }
+            }
+            return { valid: false };
+        }
+
+        function hasMoreJumps(r, c) {
+            for (let tr = 0; tr < 8; tr++) {
+                for (let tc = 0; tc < 8; tc++) {
+                    let res = checkMove(r, c, tr, tc);
+                    if (res.valid && res.type === 'jump') { return true; }
+                }
+            }
+            return false;
+        }
+
+        function startComboTimer() {
+            stopComboTimer();
+            comboTimeLeft = 5.0;
+            const timerDiv = document.getElementById('combo-timer-display');
+            timerDiv.style.display = 'block';
+            timerDiv.innerText = `⚡ ต้องกินต่อ! เวลาที่เหลือ: ${comboTimeLeft.toFixed(1)} วินาที`;
+
+            comboTimer = setInterval(() => {
+                comboTimeLeft -= 0.1;
+                if (comboTimeLeft <= 0) {
+                    stopComboTimer();
+                    jumpCount = 0; comboPiece = null; forceSwitchTurn();
+                } else {
+                    timerDiv.innerText = `⚡ ต้องกินต่อ! เวลาที่เหลือ: ${comboTimeLeft.toFixed(1)} วินาที`;
+                }
+            }, 100);
+        }
+
+        function stopComboTimer() { if (comboTimer) { clearInterval(comboTimer); comboTimer = null; } document.getElementById('combo-timer-display').style.display = 'none'; }
+
+        function forceSwitchTurn() {
+            currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
+            updateUI(false); drawPieces(); triggerBotAiIfNeeded();
+        }
+
+        function executeMove(sR, sC, eR, eC, result, shouldBroadcast = true) {
+            let pType = boardState[sR][sC]; boardState[eR][eC] = pType; boardState[sR][sC] = 0;
+
+            if (gameMode === 'online' && shouldBroadcast) {
+                socket.emit('movePiece', { target: selectedFriend, sR: sR, sC: sC, eR: eR, eC: eC, result: result });
+            }
+            if (result.type === 'jump') {
+                result.eat.forEach(enemy => boardState[enemy.r][enemy.c] = 0);
+                jumpCount++;
+            } else {
+                jumpCount = 0;
+            }
+
+            let justPromoted = false;
+            if (pType === 1 && eR === 0) { boardState[eR][eC] = 3; justPromoted = true; }
+            if (pType === 2 && eR === 7) { boardState[eR][eC] = 4; justPromoted = true; }
+
+            if (result.type === 'jump' && jumpCount < 3 && !justPromoted && hasMoreJumps(eR, eC)) {
+                comboPiece = { row: eR, col: eC }; selectedPiece = comboPiece;
+                updateUI(true); drawPieces();
+
+                const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red')));
+                if (isBotTurn) {
+                    setTimeout(() => executeBotComboMove(eR, eC), 600);
+                } else {
+                    startComboTimer();
+                }
+            } else {
+                stopComboTimer(); jumpCount = 0; comboPiece = null; endTurnProcess();
+            }
+        }
+
+        function executeBotComboMove(r, c) {
+            let possibleComboMoves = [];
+            for (let tr = 0; tr < 8; tr++) {
+                for (let tc = 0; tc < 8; tc++) {
+                    let res = checkMove(r, c, tr, tc);
+                    if (res.valid && res.type === 'jump') { possibleComboMoves.push({ sR: r, sC: c, eR: tr, eC: tc, res: res }); }
+                }
+            }
+            if (possibleComboMoves.length > 0) {
+                let m = possibleComboMoves[Math.floor(Math.random() * possibleComboMoves.length)];
+                executeMove(m.sR, m.sC, m.eR, m.eC, m.res, true);
+            } else {
+                stopComboTimer(); jumpCount = 0; comboPiece = null; endTurnProcess();
+            }
+        }
+
+        function triggerGameOver(winnerName) {
+            isGameOver = true; stopComboTimer();
+            document.getElementById('turn-display').innerText = `🏆 ฝ่าย${winnerName} ชนะ!`;
+            document.getElementById('winner-text').innerText = `ฝ่าย${winnerName} ชนะ!`;
+            document.getElementById('game-over-modal').style.display = 'flex';
+            drawPieces();
+        }
+
+        function endTurnProcess() {
+            let rPieces = 0, bPieces = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) bPieces++; }
+            }
+            if (rPieces === 0) { triggerGameOver("สีฟ้า"); return; }
+            if (bPieces === 0) { triggerGameOver("สีแดง"); return; }
+
+            currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
+            updateUI(false); drawPieces(); triggerBotAiIfNeeded();
+        }
+
+        function triggerBotAiIfNeeded() {
+            if (gameMode !== 'bot' || isGameOver) return;
+
+            const isBotActive = (currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red');
+            if (!isBotActive) return;
+
+            setTimeout(() => {
+                let availableMoves = []; let jumpMoves = [];
+                const targetValues = (currentTurn === 1) ? [1, 3] : [2, 4];
+
+                for (let r=0; r<8; r++) {
+                    for (let c=0; c<8; c++) {
+                        if (targetValues.includes(boardState[r][c])) {
+                            for (let tr=0; tr<8; tr++) {
+                                for (let tc=0; tc<8; tc++) {
+                                    let res = checkMove(r, c, tr, tc); 
+                                    if (res.valid) {
+                                        let moveData = { sR: r, sC: c, eR: tr, eC: tc, res: res };
+                                        availableMoves.push(moveData);
+                                        if (res.type === 'jump') jumpMoves.push(moveData);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (availableMoves.length > 0) {
+                    let selectedMove = null;
+                    if (aiDifficulty === 'easy') {
+                        selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    } else if (aiDifficulty === 'medium') {
+                        selectedMove = jumpMoves.length > 0 ? jumpMoves[Math.floor(Math.random() * jumpMoves.length)] : availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    } else if (aiDifficulty === 'hard') {
+                        if (jumpMoves.length > 0) { selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)]; } 
+                        else {
+                            let bestMoves = availableMoves.sort((a, b) => (currentTurn === 1) ? a.eR - b.eR : b.eR - a.eR);
+                            selectedMove = bestMoves[0];
+                        }
+                    }
+                    if (selectedMove) { executeMove(selectedMove.sR, selectedMove.sC, selectedMove.eR, selectedMove.eC, selectedMove.res, true); }
+                }
+            }, 800);
+        }
+
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        
+        function handleInteraction(clientX, clientY) {
+            if (isGameOver) return;
+            if (gameMode === 'online') {
+                if (currentTurn === 1 && myRole !== 'red') return; if (currentTurn === 2 && myRole !== 'blue') return;
+            }
+            if (gameMode === 'bot') {
+                if (currentTurn === 1 && myRole === 'blue') return;
+                if (currentTurn === 2 && myRole === 'red') return;
+            }
+            
+            const panel = document.getElementById('control-panel');
+            if (!panel.classList.contains('collapsed')) {
+                if (clientX < panel.offsetWidth) return;
+            }
+            if (clientY > window.innerHeight - 80 && clientX > window.innerWidth/2 - 120 && clientX < window.innerWidth/2 + 120) return; 
+            if (clientX > window.innerWidth - 80 && clientY > window.innerHeight - 120) return;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1; mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(tiles3DObjects); if (intersects.length === 0) return;
+
+            const targetRow = intersects[0].object.userData.row; const targetCol = intersects[0].object.userData.col;
+            const pieceAtTarget = boardState[targetRow][targetCol];
+
+            if (comboPiece && pieceAtTarget !== 0) {
+                if (targetRow !== comboPiece.row || targetCol !== comboPiece.col) return;
+            }
+
+            if (pieceAtTarget !== 0) {
+                const isRed = (pieceAtTarget === 1 || pieceAtTarget === 3);
+                if ((currentTurn === 1 && isRed) || (currentTurn === 2 && !isRed)) {
+                    selectedPiece = { row: targetRow, col: targetCol }; updateUI(true);
+                }
+            } else if (selectedPiece) {
+                const result = checkMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol);
+                if (result.valid) {
+                    if (comboPiece && result.type !== 'jump') return;
+                    executeMove(selectedPiece.row, selectedPiece.col, targetRow, targetCol, result, true);
+                }
+            }
+        }
+
+        window.addEventListener('click', (e) => handleInteraction(e.clientX, e.clientY));
+
+        window.addEventListener('wheel', (e) => {
+            currentZoomLevel += e.deltaY * 0.008; 
+            adjustCameraForDevice();
+        }, { passive: true });
+
+        let initialTouchDist = null;
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialTouchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            } else if (e.touches.length === 1) {
+                handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialTouchDist !== null) {
+                const currentDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const diff = initialTouchDist - currentDist;
+                currentZoomLevel += diff * 0.03; 
+                adjustCameraForDevice();
+                initialTouchDist = currentDist;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => { if (e.touches.length < 2) initialTouchDist = null; });
+
+        function updateUI(hasSelected) {
+            const el = document.getElementById('turn-display');
+            let name = currentTurn === 1 ? "ฝ่ายสีแดง" : "ฝ่ายสีฟ้า";
+            el.className = currentTurn === 1 ? "turn-red" : "turn-blue";
+            if (comboPiece) {
+                el.innerText = `💥 ${name} กำลังทำคอมโบกินต่อเนื่อง!`;
+            } else {
+                el.innerText = hasSelected ? `${name} เลือกหมากแล้ว แตะช่องเพื่อเดิน` : `${name} ถึงตาเดินแล้ว`;
+            }
+        }
+
+        function checkSavedPlayer() {
+            const savedName = localStorage.getItem('checkers_username');
+            if (savedName && socket.connected) {
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('profile-section').style.display = 'block';
+                document.getElementById('user-display').innerText = savedName;
+                document.getElementById('login-shortcut-btn').innerText = `👤 โปรไฟล์: ${savedName}`;
+                socket.emit('registerPlayer', savedName);
+            }
+            updateNametags();
+        }
+
+        function registerPlayer() { const username = document.getElementById('username-input').value.trim(); if (!username) return; localStorage.setItem('checkers_username', username); window.location.reload(); }
+        function logoutPlayer() { localStorage.removeItem('checkers_username'); window.location.reload(); }
+
+        socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+        socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+        socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
+        
+        socket.on('incomingChallenge', (data) => {
+            if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับคำท้าหรือไม่?`)) {
+                gameMode = 'online'; 
+                selectedFriend = data.challenger;
+                myRole = (data.challengerColor === 'red') ? 'blue' : 'red'; 
+                
+                document.getElementById('game-mode-select').value = 'online'; 
+                changeGameMode('online'); 
+                selectOnlineFriend(data.challenger);
+                
+                socket.emit('acceptChallenge', { 
+                    target: data.challenger, 
+                    responder: localStorage.getItem('checkers_username'),
+                    responderColor: data.challengerColor === 'red' ? 'blue' : 'red'
+                });
+                
+                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🔵 สีฟ้า'}] กล้องจะปรับมุมมองให้โดยอัตโนมัติ`);
+                resetGame(); 
+                if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
+            }
+        });
+
+        socket.on('challengeAccepted', (data) => { 
+            alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
+            myRole = (data.responderColor === 'red') ? 'blue' : 'red';
+            adjustCameraForDevice();
+            updateTitleText(); 
+            resetGame(); 
+        });
+
+        window.addEventListener('resize', () => { 
+            camera.aspect = window.innerWidth / window.innerHeight; 
+            camera.updateProjectionMatrix(); 
+            adjustCameraForDevice();
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+        drawPieces(); updateTitleText(); updateUI(false); animate();
+    </script>
+</body>
+</html>
