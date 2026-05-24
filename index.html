@@ -456,12 +456,19 @@
         const ZOOM_MAX = 28.0; 
         let currentZoomLevel = 0; 
 
-        // ฟังก์ชันคำนวณตำแหน่งกล้องแบบพลิกด้านตามสีของฝั่งผู้เล่น
+        // ย้ายตัวแปรสถานะหลักขึ้นมาประกาศไว้ด้านบน เพื่อป้องกันปัญหากล้องเรียกใช้ตัวแปรที่ยังไม่ได้สร้างตอนเริ่มต้นโหลดเพจ
+        let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
+        let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = 'red'; 
+
+        let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
+        let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
+
+        // แก้ไขลอจิกคำนวณเวกเตอร์กล้องใหม่ทั้งหมด ป้องกันเวกเตอร์หลุดเฟรมหรือกล้องหายไปในความมืด
         function adjustCameraForDevice() {
             const aspect = window.innerWidth / window.innerHeight;
             
             let zDirectionMultiplier = 1.0;
-            if (gameMode === 'online' && myRole === 'green') {
+            if (typeof gameMode !== 'undefined' && gameMode === 'online' && typeof myRole !== 'undefined' && myRole === 'green') {
                 zDirectionMultiplier = -1.0; 
             }
 
@@ -473,9 +480,9 @@
                 baseParams = { x: 0, y: 9.5, z: 8.5 * zDirectionMultiplier };
             }
             
-            // ป้องกันปัญหากล้องเป็นเวกเตอร์ศูนย์ ให้บวกค่าความยาวตรงๆ
+            // ใช้ความยาวฐานคงที่แทนการสุ่มค่าเวกเตอร์ชั้นนอก เพื่อให้กล้องหันหาจุดศูนย์กลางเสถียร 100%
             const dir = new THREE.Vector3(baseParams.x, baseParams.y, baseParams.z).normalize();
-            const baseLength = 12.0; // ความยาวคงที่ของเวกเตอร์รัศมีกล้องหลัก
+            const baseLength = 12.0; 
             let targetLength = baseLength + currentZoomLevel;
             
             if (targetLength < ZOOM_MIN) { targetLength = ZOOM_MIN; currentZoomLevel = ZOOM_MIN - baseLength; }
@@ -485,6 +492,8 @@
             camera.position.set(dir.x, dir.y, dir.z);
             camera.lookAt(0, -0.6, 0);
         }
+        
+        // เรียกใช้งานหลังจากมั่นใจว่าตัวแปรพื้นฐานถูกกำหนดค่าแล้ว
         adjustCameraForDevice();
 
         function zoomGame(amount) {
@@ -508,12 +517,6 @@
             [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
         ];
-
-        let currentTurn = 1; let selectedPiece = null; let isGameOver = false; let gameMode = 'bot'; 
-        let aiDifficulty = 'medium'; let selectedFriend = ''; let myRole = 'red'; 
-
-        let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
-        let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
 
         const socket = io({ transports: ['websocket'], upgrade: false }); 
         let onlineFriendsList = []; 
@@ -708,7 +711,7 @@
                 socket.emit('challengePlayer', { 
                     target: selectedFriend, 
                     challenger: localStorage.getItem('checkers_username'),
-                    challengerColor: assignedColor
+                    challengerColor: assignedColor === 'red' ? 'red' : 'green'
                 });
                 alert(`🎲 ระบบสุ่มสีให้คุณได้ฝั่ง: ${assignedColor === 'red' ? '🔴 สีแดง (เริ่มก่อน)' : '🟢 สีเขียว'} กำลังรอการตอบรับ...`);
             }
@@ -1030,13 +1033,6 @@
         socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
         socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
         
-        socket.on('opponentDisconnected', (data) => {
-            alert(data.message);
-            gameMode = 'bot';
-            document.getElementById('game-mode-select').value = 'bot';
-            changeGameMode('bot');
-        });
-
         socket.on('incomingChallenge', (data) => {
             if (confirm(`⚔️ คุณถูกท้าดวลโดย [${data.challenger}] จะรับคำท้าหรือไม่?`)) {
                 gameMode = 'online'; 
@@ -1044,29 +1040,23 @@
                 myRole = (data.challengerColor === 'red') ? 'green' : 'red'; 
                 
                 document.getElementById('game-mode-select').value = 'online'; 
-                
-                const friendSection = document.getElementById('friend-select-section');
-                const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
-                friendSection.style.display = 'block'; 
-                aiDifficultyContainer.style.display = 'none';
-                
+                changeGameMode('online'); 
                 selectOnlineFriend(data.challenger);
                 
                 socket.emit('acceptChallenge', { 
                     target: data.challenger, 
                     responder: localStorage.getItem('checkers_username'),
-                    responderColor: myRole
+                    responderColor: data.challengerColor === 'red' ? 'green' : 'red'
                 });
                 
-                alert(`🎮 แมตช์เริ่มต้น: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🟢 สีเขียว'}] กล้องพลิกอัตโนมัติครับ`);
+                alert(`🎮 ระบบจัดสรรอัตโนมัติ: คุณได้ฝั่ง [${myRole === 'red' ? '🔴 สีแดง' : '🟢 สีเขียว'}] กล้องจะปรับมุมมองให้โดยอัตโนมัติ`);
                 resetGame(); 
                 if(!document.getElementById('control-panel').classList.contains('collapsed')) { toggleMainPanel(); }
             }
         });
 
         socket.on('challengeAccepted', (data) => { 
-            alert(`🎉 คู่แข่ง [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
-            myRole = (data.responderColor === 'red') ? 'green' : 'red';
+            alert(`🎉 คุณ [${data.responder}] ตอบรับคำท้าแล้ว! เริ่มเกมได้!`); 
             adjustCameraForDevice();
             updateTitleText(); 
             resetGame(); 
