@@ -96,14 +96,15 @@
         #login-shortcut-btn {
             position: absolute;
             bottom: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(26, 18, 12, 0.85);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(210, 180, 140, 0.35);
             color: #e6c594;
-            padding: 9px 16px;
-            font-size: 12px;
+            padding: 12px 24px;
+            font-size: 13px;
             font-weight: 700;
             border-radius: 30px;
             cursor: pointer;
@@ -111,7 +112,7 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             white-space: nowrap;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -120,17 +121,17 @@
             background: rgba(230, 197, 148, 0.2);
             border-color: #ffd700;
             box-shadow: 0 0 25px rgba(210, 180, 140, 0.5);
-            transform: translateY(-2px);
+            transform: translateX(-50%) translateY(-2px);
         }
 
         #zoom-controls {
             position: absolute;
-            bottom: 80px;
+            bottom: 20px;
             right: 20px;
             z-index: 15;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
 
         .zoom-btn {
@@ -188,7 +189,7 @@
 
         #panel-toggle-trigger {
             position: fixed;
-            top: 72px;
+            top: 15px;
             right: 20px;
             width: 44px;
             height: 44px;
@@ -411,12 +412,12 @@
             transition: all 0.3s ease;
         }
         #nametag-top {
-            top: 130px;
+            top: 85px;
             background: rgba(30, 24, 20, 0.85);
             border-color: rgba(230, 190, 150, 0.25);
         }
         #nametag-bottom {
-            bottom: 130px;
+            bottom: 85px;
             background: rgba(30, 24, 20, 0.85);
             border-color: rgba(230, 190, 150, 0.25);
         }
@@ -512,14 +513,13 @@
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        // โหลด socket.io จาก CDN — ถ้าล้มเหลวจะใช้ mock แทน (standalone mode)
-        (function() {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
-            s.onerror = function() { window._socketFailed = true; };
-            document.head.appendChild(s);
-        })();
+        if (typeof io === 'undefined') {
+            const script = document.createElement('script');
+            script.src = '/socket.io/socket.io.js';
+            document.head.appendChild(script);
+        }
     </script>
 </head>
 <body>
@@ -527,7 +527,6 @@
     <div id="turn-display-container">
         <div id="turn-display" class="turn-red">กำลังจัดเตรียมกระดาน...</div>
         <div id="combo-timer-display">⚡ ต้องกินต่อ! เวลาที่เหลือ: 5.0 วินาที</div>
-        <div id="piece-counts" style="display:flex;gap:16px;font-size:12px;font-weight:700;color:#aaa;"></div>
     </div>
 
     <div id="nametag-top" class="side-nametag">ฝั่งตรงข้าม</div>
@@ -578,9 +577,9 @@
             <div id="ai-difficulty-container" style="margin-top: 10px;">
                 <label>ระดับความยากของบอท AI:</label>
                 <select id="ai-difficulty-select" onchange="changeAiDifficulty(this.value); SoundEffects.playClick();">
-                    <option value="easy">🟢 ง่าย — สุ่ม แต่เน้นกินก่อนเสมอ</option>
-                    <option value="medium" selected>🟡 ปานกลาง — Minimax 3 ตาล่วงหน้า</option>
-                    <option value="hard">🔴 ยาก — Minimax 5 ตาล่วงหน้า (ฉลาดมาก)</option>
+                    <option value="easy">🟢 ง่าย (เดินสุ่มทั่วไป)</option>
+                    <option value="medium" selected>🟡 ปานกลาง (เน้นเดินกินหมากคุณ)</option>
+                    <option value="hard">🔴 ยาก (คิดลอจิกเป็นขุน / กินได้เปรียบ)</option>
                 </select>
             </div>
         </div>
@@ -614,11 +613,6 @@
         <button class="btn-primary" style="padding:12px; font-size:15px; background: linear-gradient(135deg, #f1c40f, #f39c12); color:#111;" onclick="startGameSession(); SoundEffects.playClick();">🏁 เริ่มเกมใหม่ / รีเซ็ต</button>
 
         <div id="server-status">กำลังตรวจสอบการเชื่อมต่อเซิร์ฟเวอร์...</div>
-    </div>
-
-    <!-- AI Thinking Indicator -->
-    <div id="ai-thinking" style="display:none; position:fixed; bottom:145px; left:50%; transform:translateX(-50%); background:rgba(22,16,12,0.92); border:1px solid rgba(230,197,148,0.3); color:#e6c594; padding:8px 20px; border-radius:20px; font-size:13px; font-weight:700; z-index:20; backdrop-filter:blur(8px); animation: pulse-border 1s infinite;">
-        🤖 AI กำลังคิด...
     </div>
 
     <script>
@@ -959,7 +953,6 @@
 
         let jumpCount = 0; let comboPiece = null; let comboTimer = null; let comboTimeLeft = 5.0;
         let piece3DObjects = []; let tiles3DObjects = []; const BOARD_SIZE = 8;
-
         
         // Particle Engine array
         const particles = [];
@@ -1056,43 +1049,13 @@
             [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
         ];
 
-        // ==========================================
-        //  [Socket.io พร้อม Mock Fallback สำหรับ Standalone]
-        // ==========================================
-        let onlineFriendsList = [];
-
-        // Mock socket ที่ไม่ทำอะไรเลย — ใช้เมื่อไม่มีเซิร์ฟเวอร์
-        const mockSocket = {
-            connected: false,
-            emit: () => {},
-            on: () => {},
-        };
-
-        let socket;
-        try {
-            if (typeof io !== 'undefined') {
-                socket = io({ transports: ['websocket'], upgrade: false, timeout: 3000 });
-            } else {
-                socket = mockSocket;
-            }
-        } catch(e) {
-            socket = mockSocket;
-        }
-
-        // ถ้า socket connect ไม่ได้ใน 3 วินาที ถือว่า standalone
-        const _socketTimeout = setTimeout(() => {
-            if (!socket.connected) {
-                document.getElementById('server-status').innerText = '⚪ โหมด Standalone (ไม่มีเซิร์ฟเวอร์)';
-                document.getElementById('server-status').style.color = '#888';
-            }
-        }, 3000);
-
+        const socket = io({ transports: ['websocket'], upgrade: false }); 
+        let onlineFriendsList = []; 
 
         socket.on('connect', () => {
-            clearTimeout(_socketTimeout);
             document.getElementById('server-status').innerText = '🟢 เชื่อมต่อเซิร์ฟเวอร์สำเร็จแล้ว';
             document.getElementById('server-status').style.color = '#00ffcc';
-            checkSavedPlayer();
+            checkSavedPlayer(); 
         });
 
         socket.on('disconnect', () => {
@@ -1403,24 +1366,6 @@
         }
 
         /* [อัปเดตแท็กข้อความข้างกระดาน] */
-        // ==========================================
-        //  [นับจำนวนหมากแต่ละฝ่าย]
-        // ==========================================
-        function updatePieceCounts() {
-            let r = 0, b = 0, rk = 0, bk = 0;
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const v = boardState[row][col];
-                    if (v === 1) r++; else if (v === 3) { r++; rk++; }
-                    else if (v === 2) b++; else if (v === 4) { b++; bk++; }
-                }
-            }
-            const el = document.getElementById('piece-counts');
-            if (el) el.innerHTML =
-                '<span style="color:#ff6b6b">🔴 ' + r + ' หมาก' + (rk ? ' (' + rk + '👑)' : '') + '</span>' +
-                '<span style="color:#c2a170">🟤 ' + b + ' หมาก' + (bk ? ' (' + bk + '👑)' : '') + '</span>';
-        }
-
         function updateNametags() {
             const topTag = document.getElementById('nametag-top');
             const bottomTag = document.getElementById('nametag-bottom');
@@ -1467,16 +1412,14 @@
             const selectBox = document.getElementById('friend-list-select');
             if (!selectBox) return;
             selectBox.innerHTML = '<option value="">-- กรุณาเลือกคู่แข่ง --</option>';
-            const mySavedName = localStorage.getItem('checkers_username') || '';
+            let mySavedName = localStorage.getItem('checkers_username') || '';
             let counter = 0;
 
             onlineFriendsList.forEach(player => {
-                // รองรับทั้ง {username: "..."} และ string ตรงๆ
-                const name = typeof player === 'string' ? player : (player.username || player.name || '');
-                if (name && name !== mySavedName) {
+                if (player.username && player.username !== mySavedName) {
                     const option = document.createElement('option');
-                    option.value = name;
-                    option.innerText = `🔵 ${name}`;
+                    option.value = player.username;
+                    option.innerText = `🔵 ${player.username}`;
                     selectBox.appendChild(option);
                     counter++;
                 }
@@ -1490,14 +1433,9 @@
             const aiDifficultyContainer = document.getElementById('ai-difficulty-container');
             
             if (mode === 'online') {
-                friendSection.style.display = 'block';
-                aiDifficultyContainer.style.display = 'none';
+                friendSection.style.display = 'block'; 
+                aiDifficultyContainer.style.display = 'none'; 
                 renderOnlineFriends();
-                // ขอรายชื่อล่าสุดจาก server
-                if (socket && socket.connected) {
-                    socket.emit('getPlayers');
-                    socket.emit('requestPlayers');
-                }
             } else if (mode === 'local') {
                 friendSection.style.display = 'none'; 
                 aiDifficultyContainer.style.display = 'none'; 
@@ -1512,14 +1450,8 @@
             resetGame();
         }
 
-        function changeAiDifficulty(diff) {
-            aiDifficulty = diff;
-            updateNametags();
-        }
-        function selectOnlineFriend(friendName) {
-            selectedFriend = friendName;
-            if (gameMode === 'online' && friendName !== '') { updateTitleText(); }
-        }
+        function changeAiDifficulty(diff) { aiDifficulty = diff; updateNametags(); }
+        function selectOnlineFriend(friendName) { selectedFriend = friendName; if (gameMode === 'online' && friendName !== "") { updateTitleText(); } }
         function toggleMainPanel() {
             const panel = document.getElementById('control-panel');
             const btn = document.getElementById('panel-toggle-trigger');
@@ -1537,14 +1469,7 @@
                 btn.style.borderRadius = '0 10px 10px 0';
             }
         }
-        function openLoginPanel() {
-            const panel = document.getElementById('control-panel');
-            if (panel.classList.contains('collapsed')) { toggleMainPanel(); }
-            const inputField = document.getElementById('username-input');
-            if (inputField && document.getElementById('auth-section').style.display !== 'none') {
-                inputField.focus();
-            }
-        }
+        function openLoginPanel() { const panel = document.getElementById('control-panel'); if (panel.classList.contains('collapsed')) { toggleMainPanel(); } const inputField = document.getElementById('username-input'); if (inputField && document.getElementById('auth-section').style.display !== 'none') { inputField.focus(); } }
 
         function startGameSession() {
             if (gameMode === 'online') {
@@ -1573,12 +1498,11 @@
                 [0, 1, 0, 1, 0, 1, 0, 1], [1, 0, 1, 0, 1, 0, 1, 0]
             ];
             currentTurn = 1; selectedPiece = null; isGameOver = false;
-            jumpCount = 0; comboPiece = null; isAnimating = false; stopComboTimer();
+            jumpCount = 0; comboPiece = null; stopComboTimer();
             document.getElementById('game-over-modal').style.display = 'none';
-            document.getElementById('ai-thinking').style.display = 'none';
             
             adjustCameraForDevice(); 
-            updateUI(false); drawPieces(); updateNametags(); updatePieceCounts();
+            updateUI(false); drawPieces(); updateNametags();
             resetTileHighlights();
             
             if (gameMode === 'bot' && myRole === 'blue') {
@@ -1586,9 +1510,7 @@
             }
         }
 
-        function restartFromModal() {
-            if (gameMode === 'online') { startGameSession(); } else { resetGame(); }
-        }
+        function restartFromModal() { if (gameMode === 'online') { startGameSession(); } else { resetGame(); } }
 
         function checkMove(startRow, startCol, endRow, endCol) {
             const pType = boardState[startRow][startCol];
@@ -1629,12 +1551,11 @@
             return { valid: false };
         }
 
-        // ตรวจว่าหมากที่ตำแหน่ง (r,c) ยังกินต่อได้อีกหรือไม่
         function hasMoreJumps(r, c) {
             for (let tr = 0; tr < 8; tr++) {
                 for (let tc = 0; tc < 8; tc++) {
-                    const res = checkMove(r, c, tr, tc);
-                    if (res.valid && res.type === 'jump') return true;
+                    let res = checkMove(r, c, tr, tc);
+                    if (res.valid && res.type === 'jump') { return true; }
                 }
             }
             return false;
@@ -1651,7 +1572,6 @@
                 comboTimeLeft -= 0.1;
                 if (comboTimeLeft <= 0) {
                     stopComboTimer();
-                    isAnimating = false;
                     jumpCount = 0; comboPiece = null; forceSwitchTurn();
                 } else {
                     timerDiv.innerText = `⚡ ต้องกินต่อ! เวลาที่เหลือ: ${comboTimeLeft.toFixed(1)} วินาที`;
@@ -1659,10 +1579,7 @@
             }, 100);
         }
 
-        function stopComboTimer() {
-            if (comboTimer) { clearInterval(comboTimer); comboTimer = null; }
-            document.getElementById('combo-timer-display').style.display = 'none';
-        }
+        function stopComboTimer() { if (comboTimer) { clearInterval(comboTimer); comboTimer = null; } document.getElementById('combo-timer-display').style.display = 'none'; }
 
         function forceSwitchTurn() {
             currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
@@ -1670,60 +1587,8 @@
             resetTileHighlights();
         }
 
-        // ==========================================
-        //  [ระบบ Animation การเดินหมาก 3D แบบ Smooth]
-        // ==========================================
-        let isAnimating = false;
-
-        function animatePieceMove(pieceMesh, fromX, fromZ, toX, toZ, isJump, onComplete) {
-            const duration = isJump ? 320 : 260; // ms
-            const start = performance.now();
-            const arcHeight = isJump ? 1.2 : 0.55;
-            const baseY = pieceMesh.position.y;
-
-            function step(now) {
-                const t = Math.min((now - start) / duration, 1);
-                // easeInOut cubic
-                const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
-                pieceMesh.position.x = fromX + (toX - fromX) * ease;
-                pieceMesh.position.z = fromZ + (toZ - fromZ) * ease;
-                // พาราโบลาสำหรับ arc ขึ้น-ลง
-                const arc = Math.sin(t * Math.PI) * arcHeight;
-                pieceMesh.position.y = baseY + arc;
-
-                if (t < 1) {
-                    requestAnimationFrame(step);
-                } else {
-                    pieceMesh.position.set(toX, baseY, toZ);
-                    onComplete();
-                }
-            }
-            requestAnimationFrame(step);
-        }
-
-        function flashKingPromotion(r, c) {
-            // กระพริบแสงทองตรงช่องที่เป็น King
-            const tile = tiles3DObjects.find(t => t.userData.row === r && t.userData.col === c);
-            if (!tile) return;
-            let count = 0;
-            const flash = setInterval(() => {
-                tile.material.emissive.setHex(count % 2 === 0 ? 0xffd700 : 0x000000);
-                count++;
-                if (count > 8) {
-                    clearInterval(flash);
-                    tile.material.emissive.setHex(tile.userData.baseEmissive || 0x000000);
-                }
-            }, 80);
-        }
-
         function executeMove(sR, sC, eR, eC, result, shouldBroadcast = true) {
-            if (isAnimating) return;
-            isAnimating = true;
-
-            // ซ่อน AI thinking indicator
-            document.getElementById('ai-thinking').style.display = 'none';
-
-            let pType = boardState[sR][sC];
+            let pType = boardState[sR][sC]; boardState[eR][eC] = pType; boardState[sR][sC] = 0;
 
             if (gameMode === 'online' && shouldBroadcast) {
                 socket.emit('movePiece', { target: selectedFriend, sR: sR, sC: sC, eR: eR, eC: eC, result: result });
@@ -1731,77 +1596,46 @@
 
             const theme = THEMES[selectedTheme];
 
-            // หา 3D mesh ของหมากที่จะเดิน
-            const fromX = sC - 3.5, fromZ = sR - 3.5;
-            const toX = eC - 3.5, toZ = eR - 3.5;
+            if (result.type === 'jump') {
+                const eatenRow = result.eat[0].r;
+                const eatenCol = result.eat[0].c;
+                const eatenVal = boardState[eatenRow][eatenCol];
+                const isEatenRed = (eatenVal === 1 || eatenVal === 3);
+                const eatenColorHex = isEatenRed ? theme.pieceRed.color : theme.pieceBlue.color;
 
-            // ค้นหา piece mesh ที่ตรงกับตำแหน่งเริ่มต้น
-            let movingMesh = null;
-            for (const mesh of piece3DObjects) {
-                const mx = Math.round((mesh.position.x + 3.5) * 10) / 10;
-                const mz = Math.round((mesh.position.z + 3.5) * 10) / 10;
-                if (Math.abs(mx - sC) < 0.1 && Math.abs(mz - sR) < 0.1) {
-                    movingMesh = mesh;
-                    break;
-                }
+                result.eat.forEach(enemy => {
+                    boardState[enemy.r][enemy.c] = 0;
+                    spawnEatParticles(enemy.r, enemy.c, eatenColorHex);
+                });
+                
+                jumpCount++;
+                SoundEffects.playCapture();
+            } else {
+                jumpCount = 0;
+                SoundEffects.playMove();
             }
 
-            const isJumpMove = result.type === 'jump';
+            let justPromoted = false;
+            if (pType === 1 && eR === 0) { boardState[eR][eC] = 3; justPromoted = true; }
+            if (pType === 2 && eR === 7) { boardState[eR][eC] = 4; justPromoted = true; }
 
-            if (isJumpMove) SoundEffects.playCapture();
-            else SoundEffects.playMove();
+            if (justPromoted) {
+                SoundEffects.playKing();
+            }
 
-            const afterAnimation = () => {
-                // อัปเดต boardState
-                boardState[eR][eC] = pType;
-                boardState[sR][sC] = 0;
+            if (result.type === 'jump' && jumpCount < 3 && !justPromoted && hasMoreJumps(eR, eC)) {
+                comboPiece = { row: eR, col: eC }; selectedPiece = comboPiece;
+                updateUI(true); drawPieces();
+                highlightValidMoves();
 
-                if (isJumpMove) {
-                    const eatenVal = boardState[result.eat[0].r][result.eat[0].c];
-                    const isEatenRed = (eatenVal === 1 || eatenVal === 3);
-                    const eatenColorHex = isEatenRed ? theme.pieceRed.color : theme.pieceBlue.color;
-                    result.eat.forEach(enemy => {
-                        boardState[enemy.r][enemy.c] = 0;
-                        spawnEatParticles(enemy.r, enemy.c, eatenColorHex);
-                    });
-                    jumpCount++;
+                const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red')));
+                if (isBotTurn) {
+                    setTimeout(() => executeBotComboMove(eR, eC), 600);
                 } else {
-                    jumpCount = 0;
+                    startComboTimer();
                 }
-
-                let justPromoted = false;
-                if (pType === 1 && eR === 0) { boardState[eR][eC] = 3; justPromoted = true; }
-                if (pType === 2 && eR === 7) { boardState[eR][eC] = 4; justPromoted = true; }
-
-                if (justPromoted) {
-                    SoundEffects.playKing();
-                    flashKingPromotion(eR, eC);
-                }
-
-                isAnimating = false;
-
-                updatePieceCounts();
-
-                if (isJumpMove && jumpCount < 3 && !justPromoted && hasMoreJumps(eR, eC)) {
-                    comboPiece = { row: eR, col: eC }; selectedPiece = comboPiece;
-                    updateUI(true); drawPieces();
-                    highlightValidMoves();
-
-                    const isBotTurn = (gameMode === 'bot' && ((currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red')));
-                    if (isBotTurn) {
-                        setTimeout(() => executeBotComboMove(eR, eC), 600);
-                    } else {
-                        startComboTimer();
-                    }
-                } else {
-                    stopComboTimer(); jumpCount = 0; comboPiece = null; endTurnProcess();
-                }
-            };
-
-            if (movingMesh) {
-                animatePieceMove(movingMesh, fromX, fromZ, toX, toZ, isJumpMove, afterAnimation);
             } else {
-                afterAnimation();
+                stopComboTimer(); jumpCount = 0; comboPiece = null; endTurnProcess();
             }
         }
 
@@ -1814,19 +1648,7 @@
                 }
             }
             if (possibleComboMoves.length > 0) {
-                // ถ้า hard ให้เลือกคอมโบที่ดีที่สุดด้วย minimax ระดับ 2
-                let m;
-                if (aiDifficulty === 'hard' && possibleComboMoves.length > 1) {
-                    const botPlayer = currentTurn;
-                    let best = -Infinity; m = possibleComboMoves[0];
-                    possibleComboMoves.forEach(move => {
-                        const nb = applyMoveOnBoard(boardState, move);
-                        const score = evaluateBoard(nb, botPlayer);
-                        if (score > best) { best = score; m = move; }
-                    });
-                } else {
-                    m = possibleComboMoves[Math.floor(Math.random() * possibleComboMoves.length)];
-                }
+                let m = possibleComboMoves[Math.floor(Math.random() * possibleComboMoves.length)];
                 executeMove(m.sR, m.sC, m.eR, m.eC, m.res, true);
             } else {
                 stopComboTimer(); jumpCount = 0; comboPiece = null; endTurnProcess();
@@ -1927,8 +1749,7 @@
         renderStatsSection();
 
         function triggerGameOver(winnerColorName) {
-            isGameOver = true; isAnimating = false; stopComboTimer();
-            document.getElementById('ai-thinking').style.display = 'none';
+            isGameOver = true; stopComboTimer();
             
             // ปรับสีป้ายแสดงผลแพ้ชนะให้สอดคล้องกับโทนไม้แกะสลัก
             let name = winnerColorName === "สีแดง" ? "ฝ่ายสีแดง" : "ฝ่ายสีน้ำตาล";
@@ -1942,7 +1763,7 @@
             if (gameMode === 'local') {
                 SoundEffects.playWin();
             } else {
-                const didIWin = (myRole === 'red' && winnerColorName === "สีแดง") || (myRole === 'blue' && winnerColorName === "สีน้ำตาล");
+                const didIWin = (myRole === 'red' && winnerColorName === "สีแดง") || (myRole === 'blue' && winnerColorName === "สีฟ้า");
                 if (didIWin) {
                     SoundEffects.playWin();
                 } else {
@@ -1965,218 +1786,59 @@
         function endTurnProcess() {
             let rPieces = 0, bPieces = 0;
             for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++;
-                    if (boardState[r][c] === 2 || boardState[r][c] === 4) bPieces++;
-                }
+                for (let c = 0; c < 8; c++) { if (boardState[r][c] === 1 || boardState[r][c] === 3) rPieces++; if (boardState[r][c] === 2 || boardState[r][c] === 4) bPieces++; }
             }
-            if (rPieces === 0) { triggerGameOver("สีน้ำตาล"); return; }
+            if (rPieces === 0) { triggerGameOver("สีฟ้า"); return; }
             if (bPieces === 0) { triggerGameOver("สีแดง"); return; }
 
-            const nextTurn = currentTurn === 1 ? 2 : 1;
-
-            // ตรวจ stalemate: ถ้าฝั่งต่อไปไม่มีหมากให้เดินได้เลย
-            const nextMoves = getAllMoves(boardState, nextTurn);
-            if (nextMoves.length === 0) {
-                // ฝ่ายที่ยังเดินได้ชนะ
-                triggerGameOver(currentTurn === 1 ? "สีแดง" : "สีน้ำตาล");
-                return;
-            }
-
-            currentTurn = nextTurn; selectedPiece = null;
+            currentTurn = currentTurn === 1 ? 2 : 1; selectedPiece = null;
             updateUI(false); drawPieces(); triggerBotAiIfNeeded();
             resetTileHighlights();
-            updatePieceCounts();
         }
 
-        // ==========================================
-        //  [ระบบ AI ฉลาด: Minimax + Alpha-Beta Pruning]
-        // ==========================================
+        function triggerBotAiIfNeeded() {
+            if (gameMode !== 'bot' || isGameOver) return;
 
-        function getAllMoves(board, player) {
-            const pieces = player === 1 ? [1, 3] : [2, 4];
-            let moves = []; let jumpMoves = [];
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    if (pieces.includes(board[r][c])) {
-                        for (let tr = 0; tr < 8; tr++) {
-                            for (let tc = 0; tc < 8; tc++) {
-                                const res = checkMoveOnBoard(board, r, c, tr, tc);
-                                if (res.valid) {
-                                    const m = { sR: r, sC: c, eR: tr, eC: tc, res };
-                                    moves.push(m);
-                                    if (res.type === 'jump') jumpMoves.push(m);
+            const isBotActive = (currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red');
+            if (!isBotActive) return;
+
+            setTimeout(() => {
+                let availableMoves = []; let jumpMoves = [];
+                const targetValues = (currentTurn === 1) ? [1, 3] : [2, 4];
+
+                for (let r=0; r<8; r++) {
+                    for (let c=0; c<8; c++) {
+                        if (targetValues.includes(boardState[r][c])) {
+                            for (let tr=0; tr<8; tr++) {
+                                for (let tc=0; tc<8; tc++) {
+                                    let res = checkMove(r, c, tr, tc); 
+                                    if (res.valid) {
+                                        let moveData = { sR: r, sC: c, eR: tr, eC: tc, res: res };
+                                        availableMoves.push(moveData);
+                                        if (res.type === 'jump') jumpMoves.push(moveData);
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            return jumpMoves.length > 0 ? jumpMoves : moves;
-        }
 
-        function checkMoveOnBoard(board, startRow, startCol, endRow, endCol) {
-            const pType = board[startRow][startCol];
-            if (!pType || board[endRow][endCol] !== 0) return { valid: false };
-            const rDiff = endRow - startRow; const cDiff = endCol - startCol;
-            const absR = Math.abs(rDiff); const absC = Math.abs(cDiff);
-            if (absR !== absC) return { valid: false };
-
-            if (pType === 1 || pType === 2) {
-                if (pType === 1 && rDiff > 0) return { valid: false };
-                if (pType === 2 && rDiff < 0) return { valid: false };
-                if (absR === 1) return { valid: true, type: 'normal' };
-                if (absR === 2) {
-                    const midR = startRow + rDiff / 2; const midC = startCol + cDiff / 2;
-                    const enemyList = pType === 1 ? [2, 4] : [1, 3];
-                    if (enemyList.includes(board[midR][midC])) return { valid: true, type: 'jump', eat: [{ r: midR, c: midC }] };
-                }
-            }
-            if (pType === 3 || pType === 4) {
-                const stepR = rDiff / absR; const stepC = cDiff / absC; let piecesInWay = [];
-                for (let i = 1; i < absR; i++) {
-                    const currR = startRow + (i * stepR); const currC = startCol + (i * stepC);
-                    if (board[currR][currC] !== 0) piecesInWay.push({ r: currR, c: currC, type: board[currR][currC] });
-                }
-                if (piecesInWay.length === 0) return { valid: true, type: 'normal' };
-                if (piecesInWay.length === 1) {
-                    const enemyList = (pType === 3) ? [2, 4] : [1, 3];
-                    const distFromEnemy = Math.abs(endRow - piecesInWay[0].r);
-                    if (enemyList.includes(piecesInWay[0].type) && distFromEnemy === 1) return { valid: true, type: 'jump', eat: [{ r: piecesInWay[0].r, c: piecesInWay[0].c }] };
-                }
-            }
-            return { valid: false };
-        }
-
-        function applyMoveOnBoard(board, move) {
-            const nb = board.map(r => [...r]);
-            let pType = nb[move.sR][move.sC];
-            nb[move.eR][move.eC] = pType;
-            nb[move.sR][move.sC] = 0;
-            if (move.res.type === 'jump') {
-                move.res.eat.forEach(e => { nb[e.r][e.c] = 0; });
-            }
-            if (pType === 1 && move.eR === 0) nb[move.eR][move.eC] = 3;
-            if (pType === 2 && move.eR === 7) nb[move.eR][move.eC] = 4;
-            return nb;
-        }
-
-        function evaluateBoard(board, botPlayer) {
-            const humanPlayer = botPlayer === 1 ? 2 : 1;
-            let score = 0;
-            const centerCols = [2, 3, 4, 5];
-            const edgeCols = [0, 7];
-
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const v = board[r][c];
-                    if (!v) continue;
-                    const isBot = (botPlayer === 1 && (v === 1 || v === 3)) || (botPlayer === 2 && (v === 2 || v === 4));
-                    const isKing = v === 3 || v === 4;
-                    let pieceScore = isKing ? 300 : 100;
-
-                    // ความก้าวหน้า (Advancement bonus)
-                    if (!isKing) {
-                        const advance = isBot ? (botPlayer === 1 ? 7 - r : r) : (humanPlayer === 1 ? 7 - r : r);
-                        pieceScore += advance * 8;
+                if (availableMoves.length > 0) {
+                    let selectedMove = null;
+                    if (aiDifficulty === 'easy') {
+                        selectedMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    } else if (aiDifficulty === 'medium') {
+                        selectedMove = jumpMoves.length > 0 ? jumpMoves[Math.floor(Math.random() * jumpMoves.length)] : availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    } else if (aiDifficulty === 'hard') {
+                        if (jumpMoves.length > 0) { selectedMove = jumpMoves[Math.floor(Math.random() * jumpMoves.length)]; } 
+                        else {
+                            let bestMoves = availableMoves.sort((a, b) => (currentTurn === 1) ? a.eR - b.eR : b.eR - a.eR);
+                            selectedMove = bestMoves[0];
+                        }
                     }
-
-                    // ศูนย์กลาง (Center control)
-                    if (centerCols.includes(c)) pieceScore += 15;
-                    if (edgeCols.includes(c)) pieceScore -= 8;
-
-                    // ตำแหน่งเส้นหลังปลอดภัย
-                    if (!isKing) {
-                        const backRow = botPlayer === 1 ? 7 : 0;
-                        if (r === backRow && isBot) pieceScore += 20;
-                    }
-
-                    // คะแนนสะสม
-                    score += isBot ? pieceScore : -pieceScore;
+                    if (selectedMove) { executeMove(selectedMove.sR, selectedMove.sC, selectedMove.eR, selectedMove.eC, selectedMove.res, true); }
                 }
-            }
-            return score;
-        }
-
-        function minimax(board, depth, alpha, beta, isMaximizing, botPlayer) {
-            const humanPlayer = botPlayer === 1 ? 2 : 1;
-            const currentPlayer = isMaximizing ? botPlayer : humanPlayer;
-            const moves = getAllMoves(board, currentPlayer);
-
-            if (depth === 0 || moves.length === 0) {
-                return { score: evaluateBoard(board, botPlayer) };
-            }
-
-            let bestMove = null;
-            if (isMaximizing) {
-                let maxEval = -Infinity;
-                for (const move of moves) {
-                    const nb = applyMoveOnBoard(board, move);
-                    const result = minimax(nb, depth - 1, alpha, beta, false, botPlayer);
-                    if (result.score > maxEval) { maxEval = result.score; bestMove = move; }
-                    alpha = Math.max(alpha, maxEval);
-                    if (beta <= alpha) break;
-                }
-                return { score: maxEval, move: bestMove };
-            } else {
-                let minEval = Infinity;
-                for (const move of moves) {
-                    const nb = applyMoveOnBoard(board, move);
-                    const result = minimax(nb, depth - 1, alpha, beta, true, botPlayer);
-                    if (result.score < minEval) { minEval = result.score; bestMove = move; }
-                    beta = Math.min(beta, minEval);
-                    if (beta <= alpha) break;
-                }
-                return { score: minEval, move: bestMove };
-            }
-        }
-
-        function triggerBotAiIfNeeded() {
-            if (gameMode !== 'bot' || isGameOver) return;
-            const isBotActive = (currentTurn === 1 && myRole === 'blue') || (currentTurn === 2 && myRole === 'red');
-            if (!isBotActive) return;
-
-            const botPlayer = currentTurn; // 1=red, 2=blue
-            const delay = aiDifficulty === 'easy' ? 500 : 800;
-
-            // แสดง indicator ว่า AI กำลังคิด
-            document.getElementById('ai-thinking').style.display = 'block';
-
-            setTimeout(() => {
-                if (isGameOver) { document.getElementById('ai-thinking').style.display = 'none'; return; }
-                let selectedMove = null;
-
-                if (aiDifficulty === 'easy') {
-                    // สุ่มธรรมดา แต่เน้นกินก่อน
-                    const moves = getAllMoves(boardState, botPlayer);
-                    const jumps = moves.filter(m => m.res.type === 'jump');
-                    const pool = jumps.length > 0 ? jumps : moves;
-                    selectedMove = pool[Math.floor(Math.random() * pool.length)];
-
-                } else if (aiDifficulty === 'medium') {
-                    // Minimax depth 3
-                    const result = minimax(boardState, 3, -Infinity, Infinity, true, botPlayer);
-                    selectedMove = result.move;
-                    // fallback
-                    if (!selectedMove) {
-                        const moves = getAllMoves(boardState, botPlayer);
-                        selectedMove = moves[0];
-                    }
-
-                } else if (aiDifficulty === 'hard') {
-                    // Minimax depth 5 — ฉลาดมาก
-                    const result = minimax(boardState, 5, -Infinity, Infinity, true, botPlayer);
-                    selectedMove = result.move;
-                    if (!selectedMove) {
-                        const moves = getAllMoves(boardState, botPlayer);
-                        selectedMove = moves[0];
-                    }
-                }
-
-                if (selectedMove) {
-                    executeMove(selectedMove.sR, selectedMove.sC, selectedMove.eR, selectedMove.eC, selectedMove.res, true);
-                }
-            }, delay);
+            }, 800);
         }
 
         const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
@@ -2289,35 +1951,11 @@
             }
         }
 
-        // แป้นพิมพ์ลัด: R = Reset, Escape = ยกเลิกเลือก
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'r' || e.key === 'R') { resetGame(); SoundEffects.playClick(); }
-            if (e.key === 'Escape') {
-                selectedPiece = null; comboPiece = null;
-                resetTileHighlights(); updateUI(false);
-            }
-        });
-
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('click', (e) => handleInteraction(e.clientX, e.clientY));
 
         window.addEventListener('wheel', (e) => {
-            // ถ้า scroll อยู่ใน control panel หรือ element ที่ scroll ได้ ไม่ให้ zoom กระดาน
-            const panel = document.getElementById('control-panel');
-            if (!panel.classList.contains('collapsed')) {
-                if (e.clientX < panel.offsetWidth) return;
-            }
-            // ตรวจว่า target เป็น scrollable element (เช่น select, div ที่มี overflow)
-            let el = e.target;
-            while (el && el !== document.body) {
-                const style = window.getComputedStyle(el);
-                const overflowY = style.overflowY;
-                if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
-                    return; // ปล่อยให้ scroll element นั้นเอง
-                }
-                el = el.parentElement;
-            }
-            currentZoomLevel += e.deltaY * 0.008;
+            currentZoomLevel += e.deltaY * 0.008; 
             adjustCameraForDevice();
         }, { passive: true });
 
@@ -2363,41 +2001,21 @@
 
         function checkSavedPlayer() {
             const savedName = localStorage.getItem('checkers_username');
-            if (savedName) {
+            if (savedName && socket.connected) {
                 document.getElementById('auth-section').style.display = 'none';
                 document.getElementById('profile-section').style.display = 'block';
                 document.getElementById('user-display').innerText = savedName;
                 document.getElementById('login-shortcut-btn').innerText = `👤 โปรไฟล์: ${savedName}`;
-                // emit เมื่อ socket พร้อมเท่านั้น
-                if (socket && socket.connected) {
-                    socket.emit('registerPlayer', savedName);
-                } else if (socket && socket.on) {
-                    // รอ connect แล้วค่อย emit
-                    socket.once('connect', () => socket.emit('registerPlayer', savedName));
-                }
+                socket.emit('registerPlayer', savedName);
             }
             updateNametags();
         }
 
-        function registerPlayer() {
-            const username = document.getElementById('username-input').value.trim();
-            if (!username) return;
-            localStorage.setItem('checkers_username', username);
-            window.location.reload();
-        }
+        function registerPlayer() { const username = document.getElementById('username-input').value.trim(); if (!username) return; localStorage.setItem('checkers_username', username); window.location.reload(); }
+        function logoutPlayer() { localStorage.removeItem('checkers_username'); window.location.reload(); }
 
-        function logoutPlayer() {
-            localStorage.removeItem('checkers_username');
-            window.location.reload();
-        }
-
-        function handlePlayerListUpdate(usersList) {
-            onlineFriendsList = Array.isArray(usersList) ? usersList : [];
-            if (gameMode === 'online') renderOnlineFriends();
-        }
-        socket.on('updatePlayers', handlePlayerListUpdate);
-        socket.on('online-users', handlePlayerListUpdate);
-        socket.on('players', handlePlayerListUpdate);
+        socket.on('updatePlayers', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
+        socket.on('online-users', (usersList) => { onlineFriendsList = usersList; if (gameMode === 'online') renderOnlineFriends(); });
         socket.on('pieceMoved', (data) => { if (gameMode === 'online') executeMove(data.sR, data.sC, data.eR, data.eC, data.result, false); });
         
         socket.on('playerDisconnected', (data) => {
