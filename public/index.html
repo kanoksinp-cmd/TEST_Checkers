@@ -731,7 +731,7 @@ function createKnightFigure(colorHex,emissiveHex){
     const base=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.28,0.06,20),matDark);base.position.set(0,-0.03,0);group.add(base);
 
     group.scale.setScalar(0.78);
-    group.position.y=0.075+0.03*0.78;
+    // ไม่เซ็ต position.y ที่นี่ — drawPieces จัดการเอง
     return group;
 }
 
@@ -852,7 +852,7 @@ function createHorse3D(colorHex,emissiveHex){
     const bridleHead=new THREE.Mesh(new THREE.TorusGeometry(0.095,0.010,6,16,Math.PI*1.4),bridleMat);
     bridleHead.position.set(0,0.60,0.44);bridleHead.rotation.z=Math.PI/2;group.add(bridleHead);
 
-    group.scale.setScalar(0.85);
+    group.scale.setScalar(0.85); // scale ม้าให้พอดี
     return group;
 }
 
@@ -961,7 +961,7 @@ function createKingOnHorse(colorHex,emissiveHex){
     }
 
     outerGroup.scale.setScalar(0.72);
-    outerGroup.position.y=0.075;
+    // position.y จัดการโดย drawPieces
     return outerGroup;
 }
 
@@ -1191,7 +1191,9 @@ function drawPieces(){
                 // ฝั่งแดง (แถวล่าง): หันหน้าไปทาง -Z เข้าหาแถว 0
                 // ฝั่งน้ำเงิน (แถวบน): หันหน้าไปทาง +Z เข้าหาแถว 7 — ทั้งสองหันประทะกัน
                 pieceMesh.rotation.y=isRed?Math.PI:0;
-                pieceMesh.position.set(c-3.5,0,r-3.5);
+                // y: วางให้เท้า/กีบแตะบนกระดาน (tile top surface = 0.075)
+                const knightY = isKing ? 0.07 : 0.12;
+                pieceMesh.position.set(c-3.5, knightY, r-3.5);
             }else{
                 let sideMat,topMat;
                 if(selectedTheme==='royalwood'){
