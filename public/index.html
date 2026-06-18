@@ -191,6 +191,7 @@
                     <option value="medium" selected>🟡 ปานกลาง (Medium)</option>
                     <option value="hard">🔴 ยาก (Hard)</option>
                     <option value="genius">🟣 อัจฉริยะ ✨ (Genius AI)</option>
+                    <option value="champion">👑 แชมป์โลก ✨ (World Champion)</option>
                 </select>
                 <div id="ai-level-desc" style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:11px;line-height:1.5;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#a4b0be;"></div>
             </div>
@@ -1263,7 +1264,7 @@ function drawPieces(){
 function updateNametags(){
     const topTag=document.getElementById('nametag-top'),bottomTag=document.getElementById('nametag-bottom');
     let myName=localStorage.getItem('checkers_username')||"คุณ";
-    const diffLabels={beginner:'มือใหม่',easy:'ง่าย',medium:'ปานกลาง',hard:'ยาก',genius:'อัจฉริยะ ✨'};
+    const diffLabels={beginner:'มือใหม่',easy:'ง่าย',medium:'ปานกลาง',hard:'ยาก',genius:'อัจฉริยะ ✨',champion:'แชมป์โลก 👑'};
     const diffLabel=diffLabels[aiDifficulty]||aiDifficulty;
     if(gameMode==='bot'){topTag.innerText=`บอท AI (${diffLabel})`;topTag.style.borderColor="#8a5a36";bottomTag.innerText=`ตัวคุณ: ${myName}`;bottomTag.style.borderColor="#a81414";}
     else if(gameMode==='local'){topTag.innerText="ผู้เล่นคนที่ 2";topTag.style.borderColor="#8a5a36";bottomTag.innerText="ผู้เล่นคนที่ 1";bottomTag.style.borderColor="#a81414";}
@@ -1301,7 +1302,8 @@ function changeAiDifficulty(diff){
         easy:'🟢 ง่าย: AI กินบังคับเมื่อมีโอกาส แต่เดินสุ่มเป็นหลัก',
         medium:'🟡 ปานกลาง: AI ชอบกินหมากและเลือกตำแหน่งที่ดีขึ้น',
         hard:'🔴 ยาก: AI วิเคราะห์ chain combo, ป้องกันการเลื่อนขั้น และควบคุมพื้นที่',
-        genius:'🟣 อัจฉริยะ: Minimax + Alpha-Beta Pruning depth 6 — AI ระดับมืออาชีพ ⚠️ คิดนานกว่า'
+        genius:'🟣 อัจฉริยะ: Minimax + Alpha-Beta Pruning depth 6 — AI ระดับมืออาชีพ ⚠️ คิดนานกว่า',
+        champion:'👑 แชมป์โลก: Minimax + Alpha-Beta แบบ Iterative Deepening คิดลึกสุดเท่าที่เวลาเอื้อ (สูงสุด 12 ชั้น) พร้อมจัดลำดับการเดินก่อนค้นหา — AI ที่แข็งที่สุดในเกมนี้ ⚠️ คิดนานที่สุด'
     };
     document.getElementById('ai-level-desc').innerText=descs[diff]||'';
 }
@@ -1730,6 +1732,37 @@ function triggerBotAiIfNeeded(){
             else if(availableMoves.length>0){const m=availableMoves[0];executeMove(m.sR,m.sC,m.eR,m.eC,m.res,true);}
         },80);return;
     }
+    if(aiDifficulty==='champion'){
+        document.getElementById('ai-thinking').style.display='block';
+        setTimeout(()=>{
+            const pool=jumpMoves.length>0?jumpMoves:availableMoves;
+            // ── จัดลำดับหมากที่น่าจะดีที่สุดไว้ก่อน ให้ Alpha-Beta ตัดกิ่งได้มีประสิทธิภาพสูงขึ้น ──
+            let orderedPool=pool.map(mv=>({mv,h:scoreMove_HARD(boardState,mv,isRedBot)})).sort((a,b)=>b.h-a.h).map(x=>x.mv);
+            // ── Iterative Deepening: ค้นลึกขึ้นทีละชั้น จนกว่าจะหมดเวลาที่กำหนด (ปลอดภัยกับมือถือ/เครื่องช้า) ──
+            const TIME_BUDGET_MS=2500,MAX_DEPTH=12,START_DEPTH=4,GROWTH_EST=4.5;
+            const t0=Date.now();
+            let bestMove=orderedPool[0],lastDepthMs=0;
+            for(let depth=START_DEPTH;depth<=MAX_DEPTH;depth++){
+                const elapsedBefore=Date.now()-t0;
+                // ประมาณเวลาที่ชั้นถัดไปน่าจะใช้ (กิ่งค้นหาโตเฉลี่ย ~4-5 เท่า/ชั้น) ถ้าจะเกินเวลามากไป ให้หยุดก่อนเริ่มชั้นนี้
+                if(depth>START_DEPTH&&elapsedBefore+lastDepthMs*GROWTH_EST>TIME_BUDGET_MS*1.4)break;
+                const depthStart=Date.now();
+                let depthBest=null,depthBestScore=isRedBot?-Infinity:Infinity;
+                for(const mv of orderedPool){
+                    const newBoard=applyMove_AI(boardState,mv);let score;
+                    if(mv.res.type==='jump'){const{jumpMoves:combos}=getAllMoves_AI(newBoard,currentTurn);const comboFromDest=combos.filter(cm=>cm.sR===mv.eR&&cm.sC===mv.eC);if(comboFromDest.length>0){score=isRedBot?minimax_AI(newBoard,depth,-Infinity,Infinity,true):minimax_AI(newBoard,depth,-Infinity,Infinity,false);}else{score=isRedBot?minimax_AI(newBoard,depth-1,-Infinity,Infinity,false):minimax_AI(newBoard,depth-1,-Infinity,Infinity,true);}}
+                    else{score=isRedBot?minimax_AI(newBoard,depth-1,-Infinity,Infinity,false):minimax_AI(newBoard,depth-1,-Infinity,Infinity,true);}
+                    if(isRedBot){if(score>depthBestScore){depthBestScore=score;depthBest=mv;}}else{if(score<depthBestScore){depthBestScore=score;depthBest=mv;}}
+                }
+                lastDepthMs=Date.now()-depthStart;
+                if(depthBest){bestMove=depthBest;orderedPool=[depthBest,...orderedPool.filter(m=>m!==depthBest)];}
+                if(Date.now()-t0>=TIME_BUDGET_MS)break;
+            }
+            document.getElementById('ai-thinking').style.display='none';
+            if(bestMove){executeMove(bestMove.sR,bestMove.sC,bestMove.eR,bestMove.eC,bestMove.res,true);}
+            else if(availableMoves.length>0){const m=availableMoves[0];executeMove(m.sR,m.sC,m.eR,m.eC,m.res,true);}
+        },80);return;
+    }
 }
 
 const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2();
@@ -1936,7 +1969,7 @@ function playVsSound(){
 function showVsScreen(onDone){
     const screen=document.getElementById('vs-screen');
     const myName=localStorage.getItem('checkers_username')||'ผู้เล่น';
-    const diffLabels={beginner:'มือใหม่',easy:'ง่าย',medium:'ปานกลาง',hard:'ยาก',genius:'อัจฉริยะ ✨'};
+    const diffLabels={beginner:'มือใหม่',easy:'ง่าย',medium:'ปานกลาง',hard:'ยาก',genius:'อัจฉริยะ ✨',champion:'แชมป์โลก 👑'};
     let leftName,rightName;
     if(gameMode==='bot'){leftName=`บอท AI (${diffLabels[aiDifficulty]||aiDifficulty})`;rightName=myName;}
     else if(gameMode==='local'){leftName='ผู้เล่น 2';rightName='ผู้เล่น 1';}
