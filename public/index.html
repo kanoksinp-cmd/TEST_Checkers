@@ -452,7 +452,7 @@ function updatePieceAnimations(){
     }
     for(let i=capturedAnimations.length-1;i>=0;i--){
         const a=capturedAnimations[i];a.progress+=0.06;
-        if(a.progress>=1){capturedAnimations.splice(i,1);scene.remove(a.mesh);if(a.onComplete)a.onComplete();}
+        if(a.progress>=1){capturedAnimations.splice(i,1);scene.remove(a.mesh);disposePiece3D(a.mesh);if(a.onComplete)a.onComplete();}
         else{
             const t=a.progress;
             a.mesh.position.y=a.startY-t*t*1.2;a.mesh.scale.setScalar(1-t*0.8);
@@ -1195,11 +1195,27 @@ function updateParticles(){
 // [drawPieces]
 // ==========================================
 let blinkMeshMap=new Map();
+// ── คืนหน่วยความจำ GPU ของหมาก (geometry/material) ก่อนลบออกจาก scene ──
+// บัค "กระดานมืด" เกิดจากตรงนี้: เดิม drawPieces() ถูกเรียกทุกครั้งที่เดินหมาก
+// แล้ว "วาดหมากทั้งกระดานใหม่ทั้งหมด" แต่ไม่เคย .dispose() ของเก่าเลย
+// ทำให้ GPU buffer รั่วสะสมเรื่อย ๆ ทุกตา จนหน่วยความจำ GPU เต็มแล้ว
+// WebGL context หลุด (รีสตาร์ตไม่ทัน) → จอ/กระดานกลายเป็นสีดำ
+function disposePiece3D(obj){
+    obj.traverse(child=>{
+        if(child.isMesh){
+            if(child.geometry)child.geometry.dispose();
+            if(child.material){
+                if(Array.isArray(child.material))child.material.forEach(m=>m.dispose());
+                else child.material.dispose();
+            }
+        }
+    });
+}
 function drawPieces(){
     piece3DObjects.forEach(p=>removeKingAura(p));
     piece3DObjects.forEach(p=>removeChessKingAura(p));
     blinkMeshMap.clear();
-    piece3DObjects.forEach(p=>scene.remove(p));
+    piece3DObjects.forEach(p=>{scene.remove(p);disposePiece3D(p);});
     piece3DObjects=[];
     const theme=THEMES[selectedTheme];
     for(let r=0;r<BOARD_SIZE;r++){
